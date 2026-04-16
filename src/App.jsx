@@ -10,13 +10,14 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 // 🔥 ใส่ตั้งค่า Firebase ของคุณที่นี่
+// หมายเหตุ: เมื่อนำไปใช้งานจริงใน VS Code (Vite) สามารถเปลี่ยน "YOUR_..." เป็น import.meta.env.VITE_... ได้เลยเพื่อความปลอดภัย
 const firebaseConfig = {
-  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || "YOUR_API_KEY",
-  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
-  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
-  appId: import.meta.env?.VITE_FIREBASE_APP_ID || "YOUR_APP_ID"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 // Initialize Firebase
@@ -396,7 +397,7 @@ function MainLayout() {
 
   return (
     <>
-      {/* 🌐 ปุ่มเปลี่ยนภาษา (Floating Button แทนแถบ Nav เดิม) */}
+      {/* 🌐 ปุ่มเปลี่ยนภาษา */}
       <div className="fixed bottom-6 right-6 z-50">
         <button 
           onClick={() => setLang(lang === 'th' ? 'en' : 'th')} 
@@ -450,7 +451,7 @@ export default function App() {
 function TicketViewWrapper({ queues, onFeedback, staff, lang, t }) {
   const { ticketId } = useParams();
   const navigate = useNavigate();
-  return <StudentView ticketId={ticketId} queues={queues} onFeedback={handleFeedback} onNewTicket={() => navigate('/')} staff={staff} lang={lang} t={t} />;
+  return <StudentView ticketId={ticketId} queues={queues} onFeedback={onFeedback} onNewTicket={() => navigate('/')} staff={staff} lang={lang} t={t} />;
 }
 
 // ============================================================================
