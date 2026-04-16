@@ -5,24 +5,6 @@ import {
   Settings, Users, QrCode, ArrowRight, Play, LogOut, AlertTriangle, GraduationCap, Briefcase, Lock, Monitor, Share, FileText, BarChart, Calendar, Globe
 } from 'lucide-react';
 
-// 🔥 IMPORT FIREBASE FUNCTIONS
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, query, orderBy } from 'firebase/firestore';
-
-// 🔥 ใส่ตั้งค่า Firebase ของคุณที่นี่ (ก๊อปปี้จากเว็บ Firebase)
-const firebaseConfig = {
-  apiKey: "AIzaSyCm-ydZ2FqejXHKEPWvZ_ZAQBQXwKqSfKE",
-  authDomain: "isequeue.firebaseapp.com",
-  projectId: "isequeue",
-  storageBucket: "isequeue.firebasestorage.app",
-  messagingSenderId: "517974624592",
-  appId: "1:517974624592:web:6bcac26f2a19956a300455"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 // ============================================================================
 // 🌐 DICTIONARY (ระบบพจนานุกรมแปลภาษา)
 // ============================================================================
@@ -248,142 +230,127 @@ const playNotifySound = () => {
 // MAIN APP STRUCTURE
 // ============================================================================
 
+// Component ที่ไว้ตรวจสอบสิทธิ์ (Guard)
 const ProtectedRoute = ({ isAllowed, redirectPath = '/', children }) => {
   if (!isAllowed) return <Navigate to={redirectPath} replace />;
   return children;
 };
 
+// คอมโพเนนต์หลักที่มีการเรียกใช้ useNavigate ได้ (เพราะอยู่ภายใต้ BrowserRouter แล้ว)
 function MainLayout() {
   const navigate = useNavigate();
   
   const [lang, setLang] = useState('th'); 
   const t = DICT[lang];
 
-  // 🔥 เปลี่ยนจากข้อมูลจำลอง เป็นการดึงสดๆ จาก Firebase
   const [queues, setQueues] = useState([]);
-  const [staff, setStaff] = useState(INITIAL_STAFF); // ข้อมูลสตาฟยังใช้ Mock ไว้เพื่อให้ทดสอบง่าย
+  const [staff, setStaff] = useState(INITIAL_STAFF);
   
   const [loggedInFrontId, setLoggedInFrontId] = useState(null);
   const [loggedInStaffId, setLoggedInStaffId] = useState(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
-  // 🔥 1. ฟังการเปลี่ยนแปลงจาก Firebase (Real-time Sync)
+  // Background Worker: Auto-skip & Auto-Requeue
   useEffect(() => {
-    const q = query(collection(db, 'queues'), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const queueData = [];
-      snapshot.forEach((doc) => {
-        queueData.push({ id: doc.id, ...doc.data() });
-      });
-      setQueues(queueData);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // 🔥 2. Background Worker: Auto-skip & Auto-Requeue
-  // เช็คข้อมูลและอัปเดต Firebase อัตโนมัติ (จำกัดให้รันเฉพาะเครื่องของ Admin หรือ Staff เพื่อลดการยิง Database ซ้ำซ้อน)
-  useEffect(() => {
-    if (!isAdminLoggedIn && !loggedInFrontId && !loggedInStaffId) return;
-
     const interval = setInterval(() => {
       const now = Date.now();
-      queues.forEach(async (q) => {
-        // Auto-Skip
+      let updated = false;
+      const newQueues = queues.map(q => {
         if (q.status.includes('serving') && q.calledAt && (now - q.calledAt > TIMEOUT_MS)) {
-          await updateDoc(doc(db, 'queues', q.id), { status: 'missed', autoSkipped: true });
+          updated = true;
+          return { ...q, status: 'missed', autoSkipped: true };
         }
-        // Auto Re-Queue Follow Ups
         if (q.status === 'follow_up' && q.followUpDate) {
           const appointmentTime = new Date(q.followUpDate).getTime();
           if (now >= appointmentTime) {
-            await updateDoc(doc(db, 'queues', q.id), {
+            updated = true;
+            return { 
+              ...q, 
               status: q.resolvedBy === 'staff' ? 'waiting_staff' : 'waiting_front',
               assignedStaffId: q.resolvedBy === 'staff' ? q.followUpStaffId : null,
               followUpDate: null, 
               isFollowUpReturn: true, 
-              createdAt: now // ต่อคิวใหม่ ณ เวลานี้
-            });
+              createdAt: now 
+            };
           }
         }
+        return q;
       });
+      if (updated) setQueues(newQueues);
     }, 5000); 
     return () => clearInterval(interval);
-  }, [queues, isAdminLoggedIn, loggedInFrontId, loggedInStaffId]);
+  }, [queues]);
 
-  // --- ACTIONS (🔥 บันทึกลง Firebase แทน State) ---
-  const handleCreateTicket = async (ticketData) => {
+  // --- ACTIONS ---
+  const handleCreateTicket = (ticketData) => {
     const { topicId, branch, userType, studentId, details } = ticketData;
-    const ticketId = `Q${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
     const newTicket = {
+      id: `Q${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
       topicId, branch, userType, studentId, details,
       status: 'waiting_front', frontDeskId: null, assignedStaffId: null, resolvedBy: null, 
       createdAt: Date.now(), calledAt: null, feedback: null, isFollowUpReturn: false
     };
-    // สร้าง Document ใน Firebase โดยใช้ Custom ID (เช่น Q1234)
-    await setDoc(doc(db, 'queues', ticketId), newTicket);
-    navigate(`/ticket/${ticketId}`);
+    setQueues([...queues, newTicket]);
+    // เปลี่ยนมาใช้ navigate เพื่อไปที่หน้าตั๋วโดยไม่รีเฟรช
+    navigate(`/ticket/${newTicket.id}`);
   };
 
-  const handleFrontCallNext = async (frontId) => {
+  const handleFrontCallNext = (frontId) => {
     const frontQueues = queues.filter(q => q.status === 'waiting_front').sort((a, b) => a.createdAt - b.createdAt);
     if (frontQueues.length > 0) {
-      await updateDoc(doc(db, 'queues', frontQueues[0].id), {
-        status: 'serving_front', frontDeskId: frontId, calledAt: Date.now()
-      });
+      setQueues(qs => qs.map(q => q.id === frontQueues[0].id ? { ...q, status: 'serving_front', frontDeskId: frontId, calledAt: Date.now() } : q));
     }
   };
 
-  const handleFrontResolve = async (ticketId) => {
-    await updateDoc(doc(db, 'queues', ticketId), { status: 'completed', resolvedBy: 'frontdesk' });
+  const handleFrontResolve = (ticketId) => {
+    setQueues(qs => qs.map(q => q.id === ticketId ? { ...q, status: 'completed', resolvedBy: 'frontdesk' } : q));
   };
 
-  const handleForwardToStaff = async (ticketId, staffId) => {
-    await updateDoc(doc(db, 'queues', ticketId), {
-      status: 'waiting_staff', assignedStaffId: staffId, calledAt: null
-    });
+  const handleForwardToStaff = (ticketId, staffId) => {
+    setQueues(qs => qs.map(q => q.id === ticketId ? { ...q, status: 'waiting_staff', assignedStaffId: staffId, calledAt: null } : q));
   };
 
-  const handleStaffCallNext = async (staffId) => {
+  const handleStaffCallNext = (staffId) => {
     const staffQueues = queues.filter(q => q.assignedStaffId === staffId && q.status === 'waiting_staff').sort((a, b) => a.createdAt - b.createdAt);
     if (staffQueues.length > 0) {
-      await updateDoc(doc(db, 'queues', staffQueues[0].id), {
-        status: 'serving_staff', calledAt: Date.now()
-      });
+      setQueues(qs => qs.map(q => q.id === staffQueues[0].id ? { ...q, status: 'serving_staff', calledAt: Date.now() } : q));
     }
   };
 
-  const handleStaffResolve = async (ticketId) => {
-    await updateDoc(doc(db, 'queues', ticketId), { status: 'completed', resolvedBy: 'staff' });
+  const handleStaffResolve = (ticketId) => {
+    setQueues(qs => qs.map(q => q.id === ticketId ? { ...q, status: 'completed', resolvedBy: 'staff' } : q));
   };
 
-  const handleFollowUpTicket = async (ticketId, note, date, role, staffId) => {
-    await updateDoc(doc(db, 'queues', ticketId), {
-      status: 'follow_up', followUpNote: note, followUpDate: date, resolvedBy: role, followUpStaffId: staffId
-    });
+  const handleFollowUpTicket = (ticketId, note, date, role, staffId) => {
+    setQueues(qs => qs.map(q => q.id === ticketId ? { ...q, status: 'follow_up', followUpNote: note, followUpDate: date, resolvedBy: role, followUpStaffId: staffId } : q));
   };
 
-  const handleMissedTicket = async (ticketId) => {
-    await updateDoc(doc(db, 'queues', ticketId), { status: 'missed' });
+  const handleMissedTicket = (ticketId) => {
+    setQueues(qs => qs.map(q => q.id === ticketId ? { ...q, status: 'missed' } : q));
   };
 
-  const handleFeedback = async (ticketId, rating) => {
-    await updateDoc(doc(db, 'queues', ticketId), { feedback: rating });
+  const handleFeedback = (ticketId, rating) => {
+    setQueues(qs => qs.map(q => q.id === ticketId ? { ...q, feedback: rating } : q));
     setTimeout(() => { navigate('/'); }, 1500);
   };
 
   return (
     <>
+      {/* Navigation Bar (สามารถซ่อนได้เวลาใช้งานจริง) */}
       <div className="bg-slate-800 text-white p-3 flex justify-between items-center text-sm shadow-md overflow-x-auto z-50">
         <div className="font-bold flex items-center gap-2 whitespace-nowrap mr-4 text-blue-300">
           <Settings size={18} /> Prototype Nav
         </div>
         <div className="flex gap-2 whitespace-nowrap flex-grow">
+          {/* เปลี่ยนมาใช้ navigate() แทน window.location.href */}
           <button onClick={() => navigate('/')} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 transition-colors">User Kiosk</button>
           <button onClick={() => navigate('/monitor')} className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 transition-colors">Monitor</button>
           <button onClick={() => navigate(loggedInFrontId ? '/frontdesk' : '/frontdesk/login')} className="px-3 py-1 rounded bg-teal-700 hover:bg-teal-600 transition-colors">Front Desk</button>
           <button onClick={() => navigate(loggedInStaffId ? '/staff' : '/staff/login')} className="px-3 py-1 rounded bg-blue-900 hover:bg-blue-800 transition-colors">Specialist Staff</button>
           <button onClick={() => navigate(isAdminLoggedIn ? '/admin' : '/admin/login')} className="px-3 py-1 rounded bg-purple-900 hover:bg-purple-800 transition-colors">Admin</button>
         </div>
+        
+        {/* LANGUAGE TOGGLE */}
         <button onClick={() => setLang(lang === 'th' ? 'en' : 'th')} className="flex items-center gap-1.5 ml-4 bg-slate-600 hover:bg-slate-500 px-3 py-1 rounded-full font-bold text-white transition-colors border border-slate-500">
           <Globe size={16} /> {lang === 'th' ? 'ENG' : 'THAI'}
         </button>
@@ -391,11 +358,15 @@ function MainLayout() {
 
       <div className="flex-grow flex flex-col relative overflow-hidden">
         <Routes>
+          {/* ฝั่ง User */}
           <Route path="/" element={<KioskHome onEnter={() => navigate('/form')} lang={lang} t={t} />} />
           <Route path="/form" element={<StudentForm onSubmit={handleCreateTicket} onBack={() => navigate('/')} lang={lang} t={t} />} />
           <Route path="/ticket/:ticketId" element={<TicketViewWrapper queues={queues} onFeedback={handleFeedback} staff={staff} lang={lang} t={t} />} />
+          
+          {/* จอ Monitor */}
           <Route path="/monitor" element={<MonitorScreen queues={queues} staff={staff} lang={lang} t={t} />} />
           
+          {/* ฝั่ง Front Desk */}
           <Route path="/frontdesk/login" element={<RoleLogin role="frontdesk" staff={staff} onLogin={(id) => { setLoggedInFrontId(id); navigate('/frontdesk'); }} title={`Front Desk ${t.loginTo}`} lang={lang} t={t} />} />
           <Route path="/frontdesk" element={
             <ProtectedRoute isAllowed={!!loggedInFrontId} redirectPath="/frontdesk/login">
@@ -403,6 +374,7 @@ function MainLayout() {
             </ProtectedRoute>
           } />
 
+          {/* ฝั่ง Staff */}
           <Route path="/staff/login" element={<RoleLogin role="specialist" staff={staff} onLogin={(id) => { setLoggedInStaffId(id); navigate('/staff'); }} title={`Specialist ${t.loginTo}`} lang={lang} t={t} />} />
           <Route path="/staff" element={
             <ProtectedRoute isAllowed={!!loggedInStaffId} redirectPath="/staff/login">
@@ -410,6 +382,7 @@ function MainLayout() {
             </ProtectedRoute>
           } />
 
+          {/* ฝั่ง Admin */}
           <Route path="/admin/login" element={<AdminLogin onLogin={() => { setIsAdminLoggedIn(true); navigate('/admin'); }} t={t} />} />
           <Route path="/admin" element={
             <ProtectedRoute isAllowed={isAdminLoggedIn} redirectPath="/admin/login">
@@ -422,6 +395,7 @@ function MainLayout() {
   );
 }
 
+// Wrapper หลักที่ส่งให้ Index.js รัน
 export default function App() {
   return (
     <BrowserRouter>
@@ -430,6 +404,7 @@ export default function App() {
   );
 }
 
+// Wrapper ดึง Parameters จาก URL
 function TicketViewWrapper({ queues, onFeedback, staff, lang, t }) {
   const { ticketId } = useParams();
   const navigate = useNavigate();
@@ -437,7 +412,7 @@ function TicketViewWrapper({ queues, onFeedback, staff, lang, t }) {
 }
 
 // ============================================================================
-// COMPONENTS ย่อย
+// COMPONENTS ย่อย (ไม่ต้องเปลี่ยนแปลงแล้ว)
 // ============================================================================
 
 function KioskHome({ onEnter, t }) {
@@ -850,7 +825,6 @@ function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onRe
                 </button>
               </div>
 
-              {/* Modals */}
               {showFollowUpModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
                   <div className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl">
@@ -994,7 +968,6 @@ function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollo
                 </button>
               </div>
 
-              {/* Follow Up Modal */}
               {showFollowUpModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
                   <div className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl">

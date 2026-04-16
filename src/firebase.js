@@ -5,7 +5,6 @@ const firebaseConfig = {
   apiKey: "AIzaSyCm-ydZ2FqejXHKEPWvZ_ZAQBQXwKqSfKE",
   authDomain: "isequeue.firebaseapp.com",
   projectId: "isequeue",
-  // ... ของคุณ ...
 };
 
 const app = initializeApp(firebaseConfig);
