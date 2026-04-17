@@ -30,7 +30,7 @@ const db = getFirestore(app);
 const DICT = {
   th: {
     kioskTitle: "ระบบคิวรับบริการ",
-    kioskDesc: "สแกนเพื่อรับคิวผ่านสมาร์ทโฟน \n หรือกดปุ่มด้านล่างเพื่อรับคิวที่ตู้",
+    kioskDesc: "สแกนเพื่อรับคิวผ่านสมาร์ทโฟน",
     kioskBtn: "กดเพื่อรับคิว",
     backToHome: "กลับหน้าหลัก",
     formTitle: "กรอกข้อมูลรับคิว",
@@ -107,7 +107,7 @@ const DICT = {
   },
   en: {
     kioskTitle: "Queue Management System",
-    kioskDesc: "Scan to get your ticket via smartphone \n or tap the button below for a physical ticket",
+    kioskDesc: "Scan to get your ticket via smartphone",
     kioskBtn: "Get Ticket",
     backToHome: "Back to Home",
     formTitle: "Fill Information",
