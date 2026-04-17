@@ -10,7 +10,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 // 🔥 ใส่ตั้งค่า Firebase ของคุณที่นี่
-//  import.meta.env.VITE_... ได้เลยเพื่อความปลอดภัย
+// หมายเหตุ: เมื่อนำไปใช้งานจริงใน VS Code (Vite) สามารถเปลี่ยน "YOUR_..." เป็น import.meta.env.VITE_... ได้เลยเพื่อความปลอดภัย
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -199,24 +199,11 @@ const BRANCHES = [
 ];
 
 const INITIAL_STAFF = [
-  { id: 'fd1', name_th: 'Front Desk 1', name_en: 'Front Desk 1', role: 'frontdesk', skills: [], isReady: true },
-  { id: 'fd2', name_th: 'Front Desk 2', name_en: 'Front Desk 2)', role: 'frontdesk', skills: [], isReady: false },
-  { id: 's1', name_th: 'Napassorn - Academic (NANO)', name_en: 'Napassorn - Academic (NANO)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's2', name_th: 'Nat - Academic (ICE)', name_en: 'Nat - Academic (ICE)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's3', name_th: 'Dolaporn - Academic (Robo)', name_en: 'Dolaporn - Academic (Robo)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's4', name_th: 'Nichayanuch - Academic (ADME)', name_en: 'Nichayanuch - Academic (ADME)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's5', name_th: 'Sittipun - Academic (AERO)', name_en: 'Sittipun - Academic (AERO)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's6', name_th: 'Panyata - Academic', name_en: 'Panyata - Academic', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's7', name_th: 'Suputtra - Academic', name_en: 'Suputtra - Academic', role: 'specialist', skills: ['acad','admin'], isReady: true },
-  { id: 's8', name_th: 'Punsita - Academic', name_en: 'Punsita - Academic', role: 'specialist', skills: ['admin','inter'], isReady: true },
-  { id: 's9', name_th: 'Fonthong - Inter', name_en: 'Fonthong - Inter', role: 'specialist', skills: ['admin','inter'], isReady: true },
-  { id: 's10', name_th: 'Jirachaya - Inter', name_en: 'Jirachaya - Inter', role: 'specialist', skills: ['admin','inter'], isReady: true },
-  { id: 's11', name_th: 'Supaphan - Fin/Procure', name_en: 'Supaphan - Fin/Procure', role: 'specialist', skills: ['fin'], isReady: true },
-  { id: 's12', name_th: 'Sawarach - Procure', name_en: 'Sawarach - Procure', role: 'specialist', skills: ['fin'], isReady: true },
-  { id: 's13', name_th: 'Jirasaya - Fin', name_en: 'Jirasaya - Fin', role: 'specialist', skills: ['fin'], isReady: true },
-  { id: 's14', name_th: 'Pamigar - Sa', name_en: 'Jirasaya - Sa', role: 'specialist', skills: ['sa'], isReady: true },
-  { id: 's15', name_th: 'Waranya - Sa', name_en: 'Waranya - Sa', role: 'specialist', skills: ['sa'], isReady: true },
-  { id: 's18', name_th: 'สตาฟ ซี (All-rounder)', name_en: 'Staff C (All-rounder)', role: 'specialist', skills: ['acad', 'fin', 'sa', 'inter', 'admin'], isReady: false },
+  { id: 'fd1', name_th: 'Front Desk 1 (จุดคัดกรอง)', name_en: 'Front Desk 1 (Screening)', role: 'frontdesk', skills: [], isReady: true },
+  { id: 'fd2', name_th: 'Front Desk 2 (จุดคัดกรอง)', name_en: 'Front Desk 2 (Screening)', role: 'frontdesk', skills: [], isReady: true },
+  { id: 's1', name_th: 'สตาฟ เอ (วิชาการ/Admission)', name_en: 'Staff A (Acad/Admission)', role: 'specialist', skills: ['acad', 'admin'], isReady: true },
+  { id: 's2', name_th: 'สตาฟ บี (การเงิน/พัสดุ)', name_en: 'Staff B (Fin/Procure)', role: 'specialist', skills: ['fin'], isReady: true },
+  { id: 's3', name_th: 'สตาฟ ซี (All-rounder)', name_en: 'Staff C (All-rounder)', role: 'specialist', skills: ['acad', 'fin', 'sa', 'inter', 'admin'], isReady: true },
 ];
 
 const TIMEOUT_MS = 3 * 60 * 1000;
