@@ -1144,4 +1144,337 @@ function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onRe
                 onClick={onCallNext} 
                 disabled={myWaitingQueues.length === 0 || !staffData?.isReady} 
                 className={`w-full max-w-md text-white font-black py-8 rounded-2xl text-3xl shadow-[0_10px_20px_rgba(13,148,136,0.3)] transition-transform active:scale-95 flex items-center justify-center gap-3 ${
-                  !staffData?.isReady ? 'bg-red-400 cursor-not-allowed shadow-none' : 'bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled
+                  !staffData?.isReady ? 'bg-red-400 cursor-not-allowed shadow-none' : 'bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:shadow-none'
+                }`}
+              >
+                {!staffData?.isReady ? (
+                  <>{t.offline}</>
+                ) : (
+                  <><Play fill="currentColor" size={32}/> {t.callNext}</>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col">
+          <div className="bg-slate-50 p-5 border-b border-slate-200 font-black text-slate-700 flex justify-between items-center">
+            {t.waitingQueue} <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-lg text-sm">{myWaitingQueues.length}</span>
+          </div>
+          <div className="overflow-y-auto p-3 space-y-2">
+            {myWaitingQueues.map((q, idx) => (
+              <div key={q.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-black text-teal-300">#{idx + 1}</div>
+                  <div>
+                    <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                      {q.id}
+                      {q.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded border border-orange-200">{t.appointmentTag}</span>}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">{getTopicName(q.topicId, q.branch, lang)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollowUp, onMissed, onToggleReady, onLogout, lang, t }) {
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [followUpNote, setFollowUpNote] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const myWaitingQueues = queues.filter(q => q.assignedStaffId === staffId && q.status === 'waiting_staff').sort((a, b) => a.createdAt - b.createdAt);
+  const currentServing = queues.find(q => q.assignedStaffId === staffId && q.status === 'serving_staff');
+
+  return (
+    <div className="flex-grow flex flex-col bg-slate-50">
+      <div className="bg-blue-900 text-white p-4 sm:p-6 flex justify-between items-start sm:items-center shadow-md flex-col sm:flex-row gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-wide">{lang === 'th' ? staffData?.name_th : staffData?.name_en}</h2>
+          <div className="flex items-center gap-3 mt-2">
+            <button 
+              onClick={() => onToggleReady(staffId, staffData?.isReady)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                staffData?.isReady 
+                  ? 'bg-green-500/20 text-green-100 border-green-400 hover:bg-green-500/40' 
+                  : 'bg-red-500/20 text-red-200 border-red-400 hover:bg-red-500/40'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${staffData?.isReady ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              {staffData?.isReady ? t.online : t.offline}
+            </button>
+            <span className="text-blue-100 font-medium text-sm">{t.waitScreening} {myWaitingQueues.length} {t.queues}</span>
+          </div>
+        </div>
+        <button onClick={onLogout} className="text-blue-100 hover:text-white flex items-center gap-2 bg-blue-800 px-4 py-2 rounded-xl transition-colors w-full sm:w-auto justify-center">
+          <LogOut size={18} /> {t.logout}
+        </button>
+      </div>
+
+      <div className="flex-grow p-4 sm:p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {currentServing ? (
+            <div className="bg-white rounded-3xl shadow-xl border-t-8 border-blue-500 p-8 flex flex-col items-center">
+              <div className="w-full flex justify-between items-start mb-6 border-b pb-4">
+                <div>
+                   <div className="text-blue-600 font-bold uppercase tracking-wider mb-1">{t.forwardedQueue}</div>
+                   <div className="text-7xl font-black text-slate-800 flex items-center gap-4">
+                     {currentServing.id}
+                     {currentServing.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 text-sm px-3 py-1 rounded-full border border-orange-200">{t.appointmentTag}</span>}
+                   </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-slate-700 bg-slate-100 px-4 py-1.5 rounded-lg mb-2">{getUserTypeLabel(currentServing.userType, t)} {currentServing.studentId && `(${currentServing.studentId})`}</div>
+                </div>
+              </div>
+
+              {currentServing.details && (
+                <div className="w-full bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-8 text-left">
+                  <div className="flex items-center gap-2 font-bold text-yellow-800 mb-1"><FileText size={18}/> {t.detailsFromUser}</div>
+                  <p className="text-yellow-900">{currentServing.details}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-4">
+                <button onClick={() => onResolve(currentServing.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <CheckCircle size={24} /> {t.serviceCompleted}
+                </button>
+                <button onClick={() => { setFollowUpNote(''); setFollowUpDate(''); setShowFollowUpModal(true); }} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <Calendar size={24} /> {t.makeAppt}
+                </button>
+                <button onClick={() => onMissed(currentServing.id)} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <XCircle size={24} /> {t.noShow}
+                </button>
+              </div>
+
+              {/* Follow Up Modal */}
+              {showFollowUpModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+                  <div className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl">
+                    <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2"><Calendar className="text-orange-500"/> {t.followUpTitle} ({currentServing.id})</h3>
+                    <div className="space-y-4 mb-6 text-left">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">{t.apptDetails}</label>
+                        <textarea value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} rows="3" className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none resize-none"></textarea>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">{t.apptDate}</label>
+                        <input type="datetime-local" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none" />
+                        <p className="text-xs text-orange-500 mt-2">{t.autoRequeueNote}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={() => { onFollowUp(currentServing.id, followUpNote, followUpDate); setShowFollowUpModal(false); }} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl">{t.saveAppt}</button>
+                      <button onClick={() => setShowFollowUpModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-xl">{t.cancel}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl shadow-xl p-12 flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-blue-200">
+              <CheckCircle size={80} className="text-blue-100 mb-6" />
+              <button 
+                onClick={onCallNext} 
+                disabled={myWaitingQueues.length === 0 || !staffData?.isReady} 
+                className={`w-full max-w-md text-white font-black py-8 rounded-2xl text-3xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3 ${
+                  !staffData?.isReady ? 'bg-red-400 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:shadow-none'
+                }`}
+              >
+                {!staffData?.isReady ? (
+                  <>{t.offline}</>
+                ) : (
+                  <><Play fill="currentColor" size={32}/> {t.callNext}</>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col">
+          <div className="bg-slate-50 p-5 border-b border-slate-200 font-black text-slate-700 flex justify-between items-center">
+            {t.yourQueue} <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm">{myWaitingQueues.length}</span>
+          </div>
+          <div className="overflow-y-auto p-3 space-y-2">
+            {myWaitingQueues.map((q, idx) => (
+              <div key={q.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-black text-blue-300">#{idx + 1}</div>
+                  <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    {q.id}
+                    {q.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded border border-orange-200">{t.appointmentTag}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ queues, staff, onLogout, lang, t }) {
+  const completedQueues = queues.filter(q => q.status === 'completed');
+  const resolvedByFront = completedQueues.filter(q => q.resolvedBy === 'frontdesk').length;
+  const resolvedByStaff = completedQueues.filter(q => q.resolvedBy === 'staff').length;
+  const followUpQueues = queues.filter(q => q.status === 'follow_up').length;
+
+  // 🔥 ฟังก์ชัน Export ข้อมูลคิวเป็นไฟล์ CSV (เพิ่ม Feedback Comment)
+  const handleExportCSV = () => {
+    // 1. หัวตาราง
+    const headers = ['Queue ID', 'User Type', 'Student ID', 'Topic', 'Branch', 'Details', 'Status', 'Resolved By (Role)', 'Resolved By (Staff Name)', 'Created At', 'Called At', 'Follow Up Date', 'Feedback Score', 'Feedback Comment'];
+
+    // 2. แปลงข้อมูลคิวแต่ละรายการให้เป็นแถว
+    const csvRows = queues.map(q => {
+      const userType = getUserTypeLabel(q.userType, t);
+      const topicName = getTopicName(q.topicId, q.branch, lang);
+      
+      // หาชื่อพนักงานที่ให้บริการ
+      const staffName = q.assignedStaffId || q.frontDeskId 
+        ? (staff.find(s => s.id === (q.assignedStaffId || q.frontDeskId))?.name_th || '-') 
+        : '-';
+
+      // จัดการวันที่
+      const createdAt = q.createdAt ? new Date(q.createdAt).toLocaleString('en-US', { hour12: false }) : '-';
+      const calledAt = q.calledAt ? new Date(q.calledAt).toLocaleString('en-US', { hour12: false }) : '-';
+      const followUpDate = q.followUpDate ? new Date(q.followUpDate).toLocaleString('en-US', { hour12: false }) : '-';
+      
+      // ป้องกันเครื่องหมายคอมม่า (,) หรือ Enter ในข้อความ Details ทำให้ CSV พัง
+      const safeDetails = q.details ? `"${String(q.details).replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
+      const safeFeedbackComment = q.feedbackComment ? `"${String(q.feedbackComment).replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
+
+      return [
+        q.id,
+        userType,
+        q.studentId || '-',
+        `"${topicName}"`, // ใส่ "" ป้องกันคอมม่าในชื่อ Topic
+        q.branch || '-',
+        safeDetails,
+        q.status || 'unknown',
+        q.resolvedBy || '-',
+        `"${staffName}"`,
+        createdAt,
+        calledAt,
+        followUpDate,
+        q.feedback || '-',
+        safeFeedbackComment
+      ].join(',');
+    });
+
+    // 3. รวมหัวตารางและแถวเข้าด้วยกัน (คั่นด้วย Enter)
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+
+    // 4. สร้าง Blob พร้อมใส่ BOM (\ufeff) เพื่อให้ Excel อ่านภาษาไทยได้ถูกต้อง 100%
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // 5. สร้างลิงก์ดาวน์โหลดและสั่งคลิกอัตโนมัติ
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ISE_Queues_Export_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link); // ล้างลิงก์ทิ้ง
+  };
+
+  return (
+    <div className="flex-grow bg-slate-50 p-4 sm:p-6 overflow-y-auto">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 gap-4">
+          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3"><BarChart className="text-purple-600"/> {t.dashboard}</h1>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* 🔥 ปุ่ม Export CSV */}
+            <button onClick={handleExportCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-white bg-green-600 px-4 py-2.5 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md active:scale-95">
+              <Download size={18} /> {t.exportBtn}
+            </button>
+            <button onClick={onLogout} className="flex-1 sm:flex-none text-slate-600 bg-slate-200 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-300 transition-colors active:scale-95 text-center">
+              {t.logout}
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-slate-500 font-bold mb-2">{t.totalSystem}</div>
+            <div className="text-5xl font-black text-slate-800">{queues.length}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-teal-600 font-bold mb-2">{t.resolvedFront}</div>
+            <div className="text-5xl font-black text-teal-600">{resolvedByFront}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-purple-600 font-bold mb-2">{t.resolvedSpec}</div>
+            <div className="text-5xl font-black text-purple-600">{resolvedByStaff}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-orange-500 font-bold mb-2">{t.pendingAppt}</div>
+            <div className="text-5xl font-black text-orange-500">{followUpQueues}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-amber-500 font-bold mb-2">{t.stuckSys}</div>
+            <div className="text-5xl font-black text-amber-500">{queues.filter(q=> q.status && ['waiting_front','serving_front','waiting_staff','serving_staff'].includes(q.status)).length}</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-slate-800 text-white p-4 font-bold text-lg">{t.liveDb}</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600 text-sm">
+                  <th className="p-4 border-b">Queue</th>
+                  <th className="p-4 border-b">Contact</th>
+                  <th className="p-4 border-b">Details/Notes</th>
+                  <th className="p-4 border-b">Topic</th>
+                  <th className="p-4 border-b">Resolved By</th>
+                  <th className="p-4 border-b">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queues.slice().reverse().map(q => (
+                  <tr key={q.id} className="border-b hover:bg-slate-50">
+                    <td className="p-4 font-black">
+                      {q.id}
+                      {q.isFollowUpReturn && <div className="text-orange-500 text-[10px] mt-1">{t.appointmentTag}</div>}
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-slate-700">{getUserTypeLabel(q.userType, t)}</div>
+                      {q.studentId && <div className="text-xs text-blue-600 font-bold">{q.studentId}</div>}
+                    </td>
+                    <td className="p-4 max-w-xs truncate text-slate-500 text-sm" title={q.details}>{q.details || '-'}</td>
+                    <td className="p-4 text-slate-600 font-medium">{getTopicName(q.topicId, q.branch, lang)}</td>
+                    <td className="p-4 text-sm font-bold">
+                       {q.resolvedBy === 'frontdesk' ? <span className="text-teal-600">Front Desk</span> : 
+                        q.resolvedBy === 'staff' ? <span className="text-purple-600">Specialist Staff</span> : '-'}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold
+                        ${q.status?.includes('waiting') ? 'bg-amber-100 text-amber-700' : ''}
+                        ${q.status?.includes('serving') ? 'bg-blue-100 text-blue-700' : ''}
+                        ${q.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
+                        ${q.status === 'follow_up' ? 'bg-orange-100 text-orange-700' : ''}
+                        ${q.status === 'missed' ? 'bg-red-100 text-red-700' : ''}
+                      `}>
+                        {q.status ? String(q.status).toUpperCase().replace('_', ' ') : 'N/A'}
+                      </span>
+                      {q.status === 'follow_up' && (
+                        <div className="text-xs text-orange-600 mt-1 max-w-xs truncate" title={q.followUpNote}>
+                          {q.followUpDate ? new Date(q.followUpDate).toLocaleString(lang==='th'?'th-TH':'en-US',{dateStyle: 'short', timeStyle: 'short'}) : ''}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
