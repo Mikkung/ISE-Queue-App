@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { 
   User, Clock, CheckCircle, XCircle, Star, Bell, 
-  Settings, Users, QrCode, ArrowRight, Play, LogOut, AlertTriangle, GraduationCap, Briefcase, Lock, Monitor, Share, FileText, BarChart, Calendar, Globe
+  Settings, Users, QrCode, ArrowRight, Play, LogOut, AlertTriangle, GraduationCap, Briefcase, Lock, Monitor, Share, FileText, BarChart, Calendar, Globe, Download
 } from 'lucide-react';
 
 // 🔥 IMPORT FIREBASE FUNCTIONS
@@ -338,7 +338,8 @@ function MainLayout() {
       const now = Date.now();
       queues.forEach(async (q) => {
         try {
-          if (q.status.includes('serving') && q.calledAt && (now - q.calledAt > TIMEOUT_MS)) {
+          // 🔥 ใส่ Optional Chaining (?.) ตรงนี้แล้วครับ
+          if (q.status?.includes('serving') && q.calledAt && (now - q.calledAt > TIMEOUT_MS)) {
             await updateDoc(doc(db, 'queues', q.id), { status: 'missed', autoSkipped: true });
           }
           if (q.status === 'follow_up' && q.followUpDate) {
@@ -382,6 +383,7 @@ function MainLayout() {
   });
 
   const handleFrontCallNext = (frontId) => safeFirebaseUpdate(async () => {
+    // 🔥 แก้ไข Syntax Error บริเวณนี้แล้ว
     const frontQueues = queues.filter(q => q.status === 'waiting_front').sort((a, b) => a.createdAt - b.createdAt);
     if (frontQueues.length > 0) {
       await updateDoc(doc(db, 'queues', frontQueues[0].id), {
@@ -428,7 +430,6 @@ function MainLayout() {
     setTimeout(() => { navigate('/'); }, 1500);
   });
 
-  // ระบบ Logout
   const handleLogout = () => {
     setLoggedInFrontId(null);
     setLoggedInStaffId(null);
@@ -454,7 +455,6 @@ function MainLayout() {
           <Route path="/ticket/:ticketId" element={<TicketViewWrapper queues={queues} onFeedback={handleFeedback} staff={staff} lang={lang} t={t} />} />
           <Route path="/monitor" element={<MonitorScreen queues={queues} staff={staff} lang={lang} t={t} />} />
           
-          {/* 🔥 เปลี่ยนหน้า Login ให้เหลือหน้าเดียว (Unified Login) */}
           <Route path="/login" element={
             <UnifiedLogin 
               staff={staff} 
@@ -465,7 +465,6 @@ function MainLayout() {
             />
           } />
 
-          {/* ป้องกันคนพิมพ์ URL เก่า ให้โยนกลับมาหน้า Login ใหม่ */}
           <Route path="/admin/login" element={<Navigate to="/login" replace />} />
           <Route path="/frontdesk/login" element={<Navigate to="/login" replace />} />
           <Route path="/staff/login" element={<Navigate to="/login" replace />} />
@@ -511,7 +510,6 @@ function TicketViewWrapper({ queues, onFeedback, staff, lang, t }) {
 // COMPONENTS ย่อย
 // ============================================================================
 
-// 🔥 ฟังก์ชันหน้าจอ Unified Login แบบกรอก Email + Password
 function UnifiedLogin({ staff, onLoginFront, onLoginStaff, onLoginAdmin, t }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -523,13 +521,11 @@ function UnifiedLogin({ staff, onLoginFront, onLoginStaff, onLoginAdmin, t }) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // กรณีเข้าสู่ระบบด้วย Admin (รหัสแบบ Hardcode สำหรับ Prototype)
     if (normalizedEmail === 'thanaphon.admin@ise.com' && password === 'admin123') {
       onLoginAdmin();
       return;
     }
 
-    // กรณีเข้าสู่ระบบพนักงาน ค้นหาใน Firestore
     const matchedStaff = staff.find(s => 
       s.email && s.email.toLowerCase() === normalizedEmail && s.password === password);
     if (matchedStaff) {
@@ -591,7 +587,7 @@ function UnifiedLogin({ staff, onLoginFront, onLoginStaff, onLoginAdmin, t }) {
         <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400 text-center">
           <p>Mock Accounts for Test:</p>
           <p>Admin: thanaphon.admin@ise.com / admin123</p>
-          <p>Staff: s1@ise.com / 1234</p>
+          <p>Staff: napassorn.p@chula.ac.th / ise1234</p>
         </div>
       </div>
     </div>
@@ -628,8 +624,6 @@ function StudentForm({ onSubmit, onBack, lang, t }) {
   const isStudent = userType === 'student';
   const showStudentId = ['student', 'parent'].includes(userType);
   
-  //if make optional  const isFormValid = !!topic;
-  // if make must fill id const isFormValid = topic && (!isStudent || studentId.trim() !== '');
   const isFormValid = topic && (!isStudent || studentId.trim() !== '');
 
   const handleSubmit = async (e) => {
@@ -1300,7 +1294,7 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
       const followUpDate = q.followUpDate ? new Date(q.followUpDate).toLocaleString('en-US', { hour12: false }) : '-';
       
       // ป้องกันเครื่องหมายคอมม่า (,) หรือ Enter ในข้อความ Details ทำให้ CSV พัง
-      const safeDetails = q.details ? `"${q.details.replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
+      const safeDetails = q.details ? `"${String(q.details).replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
 
       return [
         q.id,
@@ -1309,7 +1303,7 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
         `"${topicName}"`, // ใส่ "" ป้องกันคอมม่าในชื่อ Topic
         q.branch || '-',
         safeDetails,
-        q.status,
+        q.status || 'unknown',
         q.resolvedBy || '-',
         `"${staffName}"`,
         createdAt,
@@ -1336,20 +1330,21 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
   };
 
   return (
-    <div className="flex-grow bg-slate-50 p-6 overflow-y-auto">
+    <div className="flex-grow bg-slate-50 p-4 sm:p-6 overflow-y-auto">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center border-b pb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 gap-4">
           <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3"><BarChart className="text-purple-600"/> {t.dashboard}</h1>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             {/* 🔥 ปุ่ม Export CSV */}
             <button onClick={handleExportCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-white bg-green-600 px-4 py-2.5 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md active:scale-95">
               <Download size={18} /> {t.exportBtn}
-          </button>
-          <button onClick={onLogout} className="text-slate-600 bg-slate-200 px-4 py-2 rounded-lg font-bold hover:bg-slate-300">
-            {t.logout}
-          </button>
+            </button>
+            <button onClick={onLogout} className="flex-1 sm:flex-none text-slate-600 bg-slate-200 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-300 transition-colors active:scale-95 text-center">
+              {t.logout}
+            </button>
+          </div>
         </div>
-       </div> 
+        
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
             <div className="text-slate-500 font-bold mb-2">{t.totalSystem}</div>
@@ -1369,7 +1364,7 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
             <div className="text-amber-500 font-bold mb-2">{t.stuckSys}</div>
-            <div className="text-5xl font-black text-amber-500">{queues.filter(q=>['waiting_front','serving_front','waiting_staff','serving_staff'].includes(q.status)).length}</div>
+            <div className="text-5xl font-black text-amber-500">{queues.filter(q => q.status && ['waiting_front','serving_front','waiting_staff','serving_staff'].includes(q.status)).length}</div>
           </div>
         </div>
 
@@ -1406,13 +1401,13 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
                     </td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold
-                        ${q.status.includes('waiting') ? 'bg-amber-100 text-amber-700' : ''}
-                        ${q.status.includes('serving') ? 'bg-blue-100 text-blue-700' : ''}
+                        ${q.status?.includes('waiting') ? 'bg-amber-100 text-amber-700' : ''}
+                        ${q.status?.includes('serving') ? 'bg-blue-100 text-blue-700' : ''}
                         ${q.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
                         ${q.status === 'follow_up' ? 'bg-orange-100 text-orange-700' : ''}
                         ${q.status === 'missed' ? 'bg-red-100 text-red-700' : ''}
                       `}>
-                        {q.status.toUpperCase().replace('_', ' ')}
+                        {q.status ? String(q.status).toUpperCase().replace('_', ' ') : 'N/A'}
                       </span>
                       {q.status === 'follow_up' && (
                         <div className="text-xs text-orange-600 mt-1 max-w-xs truncate" title={q.followUpNote}>
