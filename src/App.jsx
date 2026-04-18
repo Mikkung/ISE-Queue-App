@@ -108,6 +108,7 @@ const DICT = {
     loginTitle: "เข้าสู่ระบบบุคลากร",
     emailLabel: "อีเมล (Email)",
     passwordLabel: "รหัสผ่าน (Password)",
+    exportBtn: "ส่งออกข้อมูล CSV",
   },
   en: {
     kioskTitle: "Queue Management System",
@@ -190,6 +191,7 @@ const DICT = {
     loginTitle: "Staff Login",
     emailLabel: "Email Address",
     passwordLabel: "Password",
+    exportBtn: "Export CSV",
   }
 };
 
@@ -626,6 +628,8 @@ function StudentForm({ onSubmit, onBack, lang, t }) {
   const isStudent = userType === 'student';
   const showStudentId = ['student', 'parent'].includes(userType);
   
+  //if make optional  const isFormValid = !!topic;
+  // if make must fill id const isFormValid = topic && (!isStudent || studentId.trim() !== '');
   const isFormValid = topic && (!isStudent || studentId.trim() !== '');
 
   const handleSubmit = async (e) => {
@@ -1275,14 +1279,77 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
   const resolvedByStaff = completedQueues.filter(q => q.resolvedBy === 'staff').length;
   const followUpQueues = queues.filter(q => q.status === 'follow_up').length;
 
+  // 🔥 ฟังก์ชัน Export ข้อมูลคิวเป็นไฟล์ CSV
+  const handleExportCSV = () => {
+    // 1. หัวตาราง
+    const headers = ['Queue ID', 'User Type', 'Student ID', 'Topic', 'Branch', 'Details', 'Status', 'Resolved By (Role)', 'Resolved By (Staff Name)', 'Created At', 'Called At', 'Follow Up Date', 'Feedback Score'];
+
+    // 2. แปลงข้อมูลคิวแต่ละรายการให้เป็นแถว
+    const csvRows = queues.map(q => {
+      const userType = getUserTypeLabel(q.userType, t);
+      const topicName = getTopicName(q.topicId, q.branch, lang);
+      
+      // หาชื่อพนักงานที่ให้บริการ
+      const staffName = q.assignedStaffId || q.frontDeskId 
+        ? (staff.find(s => s.id === (q.assignedStaffId || q.frontDeskId))?.name_th || '-') 
+        : '-';
+
+      // จัดการวันที่
+      const createdAt = q.createdAt ? new Date(q.createdAt).toLocaleString('en-US', { hour12: false }) : '-';
+      const calledAt = q.calledAt ? new Date(q.calledAt).toLocaleString('en-US', { hour12: false }) : '-';
+      const followUpDate = q.followUpDate ? new Date(q.followUpDate).toLocaleString('en-US', { hour12: false }) : '-';
+      
+      // ป้องกันเครื่องหมายคอมม่า (,) หรือ Enter ในข้อความ Details ทำให้ CSV พัง
+      const safeDetails = q.details ? `"${q.details.replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
+
+      return [
+        q.id,
+        userType,
+        q.studentId || '-',
+        `"${topicName}"`, // ใส่ "" ป้องกันคอมม่าในชื่อ Topic
+        q.branch || '-',
+        safeDetails,
+        q.status,
+        q.resolvedBy || '-',
+        `"${staffName}"`,
+        createdAt,
+        calledAt,
+        followUpDate,
+        q.feedback || '-'
+      ].join(',');
+    });
+
+    // 3. รวมหัวตารางและแถวเข้าด้วยกัน (คั่นด้วย Enter)
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+
+    // 4. สร้าง Blob พร้อมใส่ BOM (\ufeff) เพื่อให้ Excel อ่านภาษาไทยได้ถูกต้อง 100%
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // 5. สร้างลิงก์ดาวน์โหลดและสั่งคลิกอัตโนมัติ
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ISE_Queues_Export_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link); // ล้างลิงก์ทิ้ง
+  };
+
   return (
     <div className="flex-grow bg-slate-50 p-6 overflow-y-auto">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center border-b pb-4">
           <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3"><BarChart className="text-purple-600"/> {t.dashboard}</h1>
-          <button onClick={onLogout} className="text-slate-600 bg-slate-200 px-4 py-2 rounded-lg font-bold hover:bg-slate-300">{t.logout}</button>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* 🔥 ปุ่ม Export CSV */}
+            <button onClick={handleExportCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-white bg-green-600 px-4 py-2.5 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md active:scale-95">
+              <Download size={18} /> {t.exportBtn}
+          </button>
+          <button onClick={onLogout} className="text-slate-600 bg-slate-200 px-4 py-2 rounded-lg font-bold hover:bg-slate-300">
+            {t.logout}
+          </button>
         </div>
-        
+       </div> 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
             <div className="text-slate-500 font-bold mb-2">{t.totalSystem}</div>
