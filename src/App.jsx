@@ -519,14 +519,17 @@ function UnifiedLogin({ staff, onLoginFront, onLoginStaff, onLoginAdmin, t }) {
     e.preventDefault();
     setError('');
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     // กรณีเข้าสู่ระบบด้วย Admin (รหัสแบบ Hardcode สำหรับ Prototype)
-    if (email === 'admin@ise.com' && password === 'admin123') {
+    if (normalizedEmail === 'thanaphon.admin@ise.com' && password === 'admin123') {
       onLoginAdmin();
       return;
     }
 
     // กรณีเข้าสู่ระบบพนักงาน ค้นหาใน Firestore
-    const matchedStaff = staff.find(s => s.email === email && s.password === password);
+    const matchedStaff = staff.find(s => 
+      s.email && s.email.toLowerCase() === normalizedEmail && s.password === password);
     if (matchedStaff) {
       if (matchedStaff.role === 'frontdesk') {
         onLoginFront(matchedStaff.id);
