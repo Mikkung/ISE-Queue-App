@@ -60,7 +60,9 @@ const DICT = {
     liveUpdate: "Live Update: กำลังอัปเดตอัตโนมัติ",
     notFoundTitle: "ไม่พบข้อมูลคิว",
     serviceCompleted: "บริการเสร็จสิ้น",
-    thanksFeedback: "ขอบคุณที่ใช้บริการ ให้คะแนนความพึงพอใจด้านล่างได้เลยครับ",
+    thanksFeedback: "ขอบคุณที่ใช้บริการ โปรดให้คะแนนความพึงพอใจด้านล่าง",
+    commentPlaceholder: "มีข้อเสนอแนะเพิ่มเติมไหมครับ? (ไม่บังคับ)",
+    submitFeedback: "ส่งแบบประเมิน",
     missedTitle: "คิวถูกข้าม",
     missedDesc: "คุณไม่มารายงานตัวตามเวลาที่กำหนด",
     getNewTicket: "รับคิวใหม่",
@@ -144,6 +146,8 @@ const DICT = {
     notFoundTitle: "Ticket Not Found",
     serviceCompleted: "Service Completed",
     thanksFeedback: "Thank you! Please rate our service below.",
+    commentPlaceholder: "Any additional feedback? (Optional)",
+    submitFeedback: "Submit Feedback",
     missedTitle: "Ticket Skipped",
     missedDesc: "You did not show up at the specified time.",
     getNewTicket: "Get New Ticket",
@@ -338,7 +342,6 @@ function MainLayout() {
       const now = Date.now();
       queues.forEach(async (q) => {
         try {
-          // 🔥 ใส่ Optional Chaining (?.) ตรงนี้แล้วครับ
           if (q.status?.includes('serving') && q.calledAt && (now - q.calledAt > TIMEOUT_MS)) {
             await updateDoc(doc(db, 'queues', q.id), { status: 'missed', autoSkipped: true });
           }
@@ -366,7 +369,7 @@ function MainLayout() {
     const newTicket = {
       topicId, branch, userType, studentId, details,
       status: 'waiting_front', frontDeskId: null, assignedStaffId: null, resolvedBy: null, 
-      createdAt: Date.now(), calledAt: null, feedback: null, isFollowUpReturn: false
+      createdAt: Date.now(), calledAt: null, feedback: null, feedbackComment: null, isFollowUpReturn: false
     };
     
     await setDoc(doc(db, 'queues', ticketId), newTicket);
@@ -383,7 +386,6 @@ function MainLayout() {
   });
 
   const handleFrontCallNext = (frontId) => safeFirebaseUpdate(async () => {
-    // 🔥 แก้ไข Syntax Error บริเวณนี้แล้ว
     const frontQueues = queues.filter(q => q.status === 'waiting_front').sort((a, b) => a.createdAt - b.createdAt);
     if (frontQueues.length > 0) {
       await updateDoc(doc(db, 'queues', frontQueues[0].id), {
@@ -425,9 +427,13 @@ function MainLayout() {
     await updateDoc(doc(db, 'queues', ticketId), { status: 'missed' });
   });
 
-  const handleFeedback = (ticketId, rating) => safeFirebaseUpdate(async () => {
-    await updateDoc(doc(db, 'queues', ticketId), { feedback: rating });
-    setTimeout(() => { navigate('/'); }, 1500);
+  // 🔥 อัปเดตรับ Comment จากการประเมิน
+  const handleFeedback = (ticketId, rating, comment) => safeFirebaseUpdate(async () => {
+    await updateDoc(doc(db, 'queues', ticketId), { 
+      feedback: rating,
+      feedbackComment: comment || null
+    });
+    setTimeout(() => { navigate('/'); }, 1000);
   });
 
   const handleLogout = () => {
@@ -732,6 +738,11 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
   const [toast, setToast] = useState(null);
   const [hasNotifiedPre, setHasNotifiedPre] = useState(false);
   const [hasNotifiedTurn, setHasNotifiedTurn] = useState(false);
+
+  // 🔥 เพิ่ม State สำหรับให้คะแนน 1-5 และคอมเมนต์
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
   
   const myTicket = queues.find(q => q.id === ticketId);
 
@@ -745,18 +756,53 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
     );
   }
 
+  // 🔥 อัปเดตหน้าต่างประเมิน (เสร็จสิ้นบริการ)
   if (myTicket.status === 'completed') {
     return (
-      <div className="flex-grow flex flex-col items-center justify-center p-6 bg-white text-center">
-        <CheckCircle size={80} className="text-green-500 mb-6" />
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">{t.serviceCompleted}</h2>
-        <p className="text-gray-500 mb-8">{t.thanksFeedback}</p>
-        <div className="flex gap-2 mb-8">
-          {[1, 2, 3, 4, 5].map(star => (
-            <button key={star} onClick={() => onFeedback(ticketId, star)} className="p-2 text-gray-200 hover:text-yellow-400 hover:scale-110 transition-all">
-              <Star size={48} fill="currentColor" />
+      <div className="flex-grow flex flex-col items-center justify-center p-4 sm:p-6 bg-gray-50 text-center">
+        <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
+          <CheckCircle size={80} className="text-green-500 mb-6" />
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">{t.serviceCompleted}</h2>
+          <p className="text-gray-500 mb-8">{t.thanksFeedback}</p>
+          
+          <div className="w-full bg-gray-50 p-6 rounded-2xl border border-gray-100">
+            {/* กล่องตัวเลข 1-5 */}
+            <div className="flex justify-center gap-3 mb-6">
+              {[1, 2, 3, 4, 5].map(score => (
+                <button 
+                  key={score} 
+                  onClick={() => setRating(score)} 
+                  className={`w-12 h-12 rounded-full text-xl font-bold transition-all duration-300 ${rating === score ? 'bg-yellow-400 text-white shadow-lg scale-110' : 'bg-gray-200 text-gray-600 hover:bg-yellow-200 hover:scale-105'}`}
+                >
+                  {score}
+                </button>
+              ))}
+            </div>
+
+            {/* กล่องกรอกคอมเมนต์ */}
+            <textarea 
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-6 transition-all text-sm sm:text-base"
+              rows="3"
+              placeholder={t.commentPlaceholder}
+            ></textarea>
+
+            <button 
+              disabled={rating === 0 || isFeedbackSubmitting}
+              onClick={() => {
+                setIsFeedbackSubmitting(true);
+                onFeedback(ticketId, rating, comment.trim());
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center gap-2"
+            >
+              {isFeedbackSubmitting ? (
+                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div></>
+              ) : (
+                t.submitFeedback
+              )}
             </button>
-          ))}
+          </div>
         </div>
       </div>
     );
@@ -1273,10 +1319,10 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
   const resolvedByStaff = completedQueues.filter(q => q.resolvedBy === 'staff').length;
   const followUpQueues = queues.filter(q => q.status === 'follow_up').length;
 
-  // 🔥 ฟังก์ชัน Export ข้อมูลคิวเป็นไฟล์ CSV
+  // 🔥 ฟังก์ชัน Export ข้อมูลคิวเป็นไฟล์ CSV (เพิ่ม Feedback Comment)
   const handleExportCSV = () => {
     // 1. หัวตาราง
-    const headers = ['Queue ID', 'User Type', 'Student ID', 'Topic', 'Branch', 'Details', 'Status', 'Resolved By (Role)', 'Resolved By (Staff Name)', 'Created At', 'Called At', 'Follow Up Date', 'Feedback Score'];
+    const headers = ['Queue ID', 'User Type', 'Student ID', 'Topic', 'Branch', 'Details', 'Status', 'Resolved By (Role)', 'Resolved By (Staff Name)', 'Created At', 'Called At', 'Follow Up Date', 'Feedback Score', 'Feedback Comment'];
 
     // 2. แปลงข้อมูลคิวแต่ละรายการให้เป็นแถว
     const csvRows = queues.map(q => {
@@ -1295,6 +1341,7 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
       
       // ป้องกันเครื่องหมายคอมม่า (,) หรือ Enter ในข้อความ Details ทำให้ CSV พัง
       const safeDetails = q.details ? `"${String(q.details).replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
+      const safeFeedbackComment = q.feedbackComment ? `"${String(q.feedbackComment).replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
 
       return [
         q.id,
@@ -1309,7 +1356,8 @@ function AdminPanel({ queues, staff, onLogout, lang, t }) {
         createdAt,
         calledAt,
         followUpDate,
-        q.feedback || '-'
+        q.feedback || '-',
+        safeFeedbackComment
       ].join(',');
     });
 
