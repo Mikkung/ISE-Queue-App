@@ -376,7 +376,6 @@ function MainLayout() {
     navigate(`/ticket/${ticketId}`);
   };
 
-  // 🔥 ลบคำสั่ง alert() ออก ป้องกันเบราว์เซอร์มือถือบล็อกแล้วหน้าค้าง
   const safeFirebaseUpdate = async (updateFn) => {
     try { await updateFn(); } 
     catch (err) { console.error("Firebase Action Error:", err); }
@@ -739,14 +738,12 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
   const [hasNotifiedPre, setHasNotifiedPre] = useState(false);
   const [hasNotifiedTurn, setHasNotifiedTurn] = useState(false);
 
-  // 🔥 เพิ่ม State สำหรับให้คะแนน 1-5 และคอมเมนต์
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
   
   const myTicket = queues.find(q => q.id === ticketId);
 
-  // 🔥 ย้ายตัวแปรทั้งหมดมาเพื่อป้องกันการเข้าถึงค่าว่าง (Null pointer)
   const topicName = myTicket ? getTopicName(myTicket.topicId, myTicket.branch, lang) : '';
   const isServing = myTicket?.status === 'serving_front' || myTicket?.status === 'serving_staff';
   const isWaitingFront = myTicket?.status === 'waiting_front';
@@ -775,7 +772,6 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
     }
   }, [isServing, isWaitingFront, isWaitingStaff, position, hasNotifiedPre, hasNotifiedTurn, t]);
 
-  // 🔥 กรณีไม่พบ Ticket ในระบบ
   if (!myTicket) {
     return (
       <div className="flex-grow flex flex-col items-center justify-center p-6 text-center">
@@ -786,7 +782,6 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
     );
   }
 
-  // 🔥 หน้าจอประเมินความพึงพอใจ (แก้ไขบั๊กและเปลี่ยนเป็นปุ่มตัวเลขแล้ว)
   if (myTicket.status === 'completed') {
     return (
       <div className="flex-grow flex flex-col items-center justify-center p-4 sm:p-6 bg-gray-50 text-center">
@@ -796,7 +791,6 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
           <p className="text-gray-500 mb-8">{t.thanksFeedback}</p>
           
           <div className="w-full bg-gray-50 p-6 rounded-2xl border border-gray-100">
-            {/* กล่องตัวเลข 1-5 */}
             <div className="flex justify-center gap-3 mb-6">
               {[1, 2, 3, 4, 5].map(score => (
                 <button 
@@ -807,4 +801,672 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
                   {score}
                 </button>
               ))}
-            </div></div></div></div>);}
+            </div>
+
+            <textarea 
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-6 transition-all text-sm sm:text-base"
+              rows="3"
+              placeholder={t.commentPlaceholder}
+            ></textarea>
+
+            <button 
+              disabled={rating === 0 || isFeedbackSubmitting}
+              onClick={() => {
+                setIsFeedbackSubmitting(true);
+                onFeedback(ticketId, rating, comment.trim());
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center gap-2"
+            >
+              {isFeedbackSubmitting ? (
+                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div></>
+              ) : (
+                t.submitFeedback
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (myTicket.status === 'follow_up') {
+    return (
+      <div className="flex-grow flex flex-col items-center justify-center p-6 bg-orange-50 text-center">
+        <Calendar size={80} className="text-orange-500 mb-6" />
+        <h2 className="text-3xl font-bold text-orange-800 mb-2">{t.followUpTitle}</h2>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mt-4 mb-8 text-left max-w-sm w-full">
+          <p className="text-sm text-gray-500 mb-1">{t.followUpTodo}</p>
+          <p className="text-gray-800 font-medium mb-4">{myTicket.followUpNote || '-'}</p>
+          {myTicket.followUpDate && (
+            <>
+              <p className="text-sm text-gray-500 mb-1">{t.followUpDate}</p>
+              <p className="text-orange-600 font-bold">{new Date(myTicket.followUpDate).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            </>
+          )}
+          <p className="text-xs text-orange-400 mt-4 text-center">{t.autoRequeueNote}</p>
+        </div>
+        <button onClick={onNewTicket} className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg">{t.backToHome}</button>
+      </div>
+    );
+  }
+
+  if (myTicket.status === 'missed') {
+    return (
+      <div className="flex-grow flex flex-col items-center justify-center p-6 bg-red-50 text-center">
+        <XCircle size={80} className="text-red-500 mb-6" />
+        <h2 className="text-3xl font-bold text-red-800 mb-2">{t.missedTitle}</h2>
+        <p className="text-red-600 mb-8">{t.missedDesc}</p>
+        <button onClick={onNewTicket} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg">{t.getNewTicket}</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-grow flex flex-col bg-gray-100 p-4 sm:p-6 pb-20">
+      {toast && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-blue-800 text-white px-6 py-4 rounded-full shadow-2xl z-50 flex items-center gap-3 animate-bounce w-11/12 max-w-md">
+          <Bell size={24} className="animate-pulse shrink-0 text-yellow-300" /> 
+          <span className="text-sm font-bold">{toast}</span>
+        </div>
+      )}
+
+      <div className="bg-white rounded-3xl shadow-xl overflow-hidden max-w-sm w-full mx-auto mt-4">
+        <div className={`p-8 text-center text-white transition-colors duration-500 ${isServing ? 'bg-green-500 animate-pulse' : (isWaitingStaff ? 'bg-purple-600' : 'bg-blue-600')}`}>
+          <h3 className="text-white/80 font-bold mb-2 tracking-wide uppercase text-sm">{t.queueNumber}</h3>
+          <div className="text-7xl font-black tracking-wider my-2">{myTicket.id}</div>
+          <div className="inline-block bg-white/20 px-4 py-1.5 rounded-full text-sm font-medium mt-3 border border-white/30">{topicName}</div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+             <div>
+                <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">{t.contactPerson}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-gray-800 text-lg">{getUserTypeLabel(myTicket.userType, t)}</p>
+                  {myTicket.studentId && <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-blue-200">{myTicket.studentId}</span>}
+                  {myTicket.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200">{t.appointmentTag}</span>}
+                </div>
+             </div>
+          </div>
+
+          {isWaitingFront && (
+            <div className="bg-blue-50 rounded-2xl p-6 text-center border border-blue-100">
+              <p className="text-sm text-blue-600 font-bold mb-2">{t.waitFrontDesk}</p>
+              <p className="text-4xl font-black text-blue-800">{position - 1} <span className="text-base font-medium">{t.queuesAhead}</span></p>
+              <p className="text-xs text-blue-500 mt-2">{t.estTime}{ewt} {t.estMins}</p>
+            </div>
+          )}
+
+          {isWaitingStaff && (
+            <div className="bg-purple-50 rounded-2xl p-6 text-center border border-purple-100">
+              <div className="flex justify-center mb-2"><Share size={24} className="text-purple-500"/></div>
+              <p className="text-sm text-purple-600 font-bold mb-2">{t.forwardedToSpecialist}</p>
+              <p className="text-xs text-purple-500 mb-2">{t.waitingFor} {staff.find(s=>s.id===myTicket.assignedStaffId)?.[lang==='th'?'name_th':'name_en']}</p>
+              <p className="text-3xl font-black text-purple-800">{position - 1} <span className="text-base font-medium">{t.queuesAhead}</span></p>
+            </div>
+          )}
+
+          {isServing && (
+            <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-6 text-center shadow-inner">
+              <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
+              <h4 className="text-2xl font-black text-green-800 mb-2">{t.yourTurn}</h4>
+              <p className="text-green-700 font-medium">{t.pleaseProceed} <br/> <span className="font-bold text-lg">{staff.find(s=>s.id===(myTicket.frontDeskId || myTicket.assignedStaffId))?.[lang==='th'?'name_th':'name_en']}</span></p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {(isWaitingFront || isWaitingStaff) && (
+        <div className="text-center mt-6 text-gray-500 text-sm flex items-center justify-center gap-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div> {t.liveUpdate}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MonitorScreen({ queues, staff, lang, t }) {
+  const servingQueues = queues.filter(q => q.status === 'serving_front' || q.status === 'serving_staff').sort((a,b) => b.calledAt - a.calledAt); 
+  const waitingFrontQueues = queues.filter(q => q.status === 'waiting_front').sort((a, b) => a.createdAt - b.createdAt);
+
+  return (
+    <div className="flex-grow flex bg-slate-900 text-white h-screen overflow-hidden">
+      <div className="w-2/3 p-6 flex flex-col border-r border-slate-700">
+        <div className="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
+          <h1 className="text-4xl font-black flex items-center gap-3"><Monitor className="text-blue-400" size={40}/> {t.nowServing}</h1>
+          <div className="text-xl font-bold text-slate-400">{new Date().toLocaleTimeString(lang === 'th' ? 'th-TH' : 'en-US')}</div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 flex-grow overflow-y-auto pr-2 pb-20">
+          {servingQueues.slice(0,6).map((q) => {
+            const counterName = staff.find(s => s.id === (q.frontDeskId || q.assignedStaffId))?.[lang==='th'?'name_th':'name_en'] || 'Counter';
+            const isNew = (Date.now() - q.calledAt) < 10000; 
+            return (
+              <div key={q.id} className={`rounded-3xl flex items-center p-6 border-l-[12px] shadow-2xl transition-all ${q.status === 'serving_staff' ? 'bg-slate-800 border-purple-500' : 'bg-slate-800 border-blue-500'} ${isNew ? 'animate-pulse ring-4 ring-white' : ''}`}>
+                <div className="w-1/2">
+                   <div className="text-7xl font-black tracking-wider text-white mb-2">{q.id}</div>
+                   <div className="text-lg text-slate-400 font-medium flex items-center gap-2">
+                     {getUserTypeLabel(q.userType, t)}
+                     {q.isFollowUpReturn && <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded border border-orange-500/50">{t.appointmentTag}</span>}
+                   </div>
+                </div>
+                <div className="w-1/2 text-right">
+                   <div className="text-xl text-slate-400 font-bold mb-1">{t.proceedTo}</div>
+                   <div className="text-3xl font-bold text-yellow-400">{counterName}</div>
+                </div>
+              </div>
+            )
+          })}
+          {servingQueues.length === 0 && (
+            <div className="col-span-1 xl:col-span-2 flex items-center justify-center h-full">
+              <h2 className="text-4xl font-bold text-slate-600">{t.noServingQueue}</h2>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="w-1/3 p-6 flex flex-col bg-slate-800/30">
+        <div className="mb-6 border-b border-slate-700 pb-4">
+          <h2 className="text-2xl font-black text-teal-400">{t.waitingQueue}</h2>
+          <p className="text-sm text-slate-400 mt-1">{t.totalQueues} {waitingFrontQueues.length}</p>
+        </div>
+        <div className="overflow-y-auto pr-2 pb-20 space-y-3">
+          {waitingFrontQueues.map((q, idx) => (
+            <div key={q.id} className="bg-slate-800 p-4 rounded-2xl flex justify-between items-center border border-slate-700">
+              <div className="flex items-center gap-4">
+                <span className="text-teal-400 font-black text-xl">#{idx + 1}</span>
+                <span className="text-3xl font-bold text-white tracking-widest">{q.id}</span>
+              </div>
+              {q.isFollowUpReturn && <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-1 rounded border border-orange-500/50">{t.appointmentTag}</span>}
+            </div>
+          ))}
+          {waitingFrontQueues.length === 0 && (
+            <div className="text-center text-slate-500 mt-10">{t.noWaitingQueue}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onResolve, onForward, onFollowUp, onMissed, onToggleReady, onLogout, lang, t }) {
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [followUpNote, setFollowUpNote] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const myWaitingQueues = queues.filter(q => q.status === 'waiting_front').sort((a, b) => a.createdAt - b.createdAt);
+  const currentServing = queues.find(q => q.frontDeskId === staffId && q.status === 'serving_front');
+  const specialists = allStaff.filter(s => s.role === 'specialist');
+
+  return (
+    <div className="flex-grow flex flex-col bg-slate-50">
+      <div className="bg-teal-900 text-white p-4 sm:p-6 flex justify-between items-start sm:items-center shadow-md flex-col sm:flex-row gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-wide">{lang === 'th' ? staffData?.name_th : staffData?.name_en}</h2>
+          <div className="flex items-center gap-3 mt-2">
+            <button 
+              onClick={() => onToggleReady(staffId, staffData?.isReady)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                staffData?.isReady 
+                  ? 'bg-green-500/20 text-green-100 border-green-400 hover:bg-green-500/40' 
+                  : 'bg-red-500/20 text-red-200 border-red-400 hover:bg-red-500/40'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${staffData?.isReady ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              {staffData?.isReady ? t.online : t.offline}
+            </button>
+            <span className="text-teal-100 font-medium text-sm">{t.waitScreening} {myWaitingQueues.length} {t.queues}</span>
+          </div>
+        </div>
+        <button onClick={onLogout} className="text-teal-100 hover:text-white flex items-center gap-2 bg-teal-800 px-4 py-2 rounded-xl transition-colors w-full sm:w-auto justify-center">
+          <LogOut size={18} /> {t.logout}
+        </button>
+      </div>
+
+      <div className="flex-grow p-4 sm:p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {currentServing ? (
+            <div className="bg-white rounded-3xl shadow-xl border-t-8 border-teal-500 p-8 flex flex-col items-center">
+              <div className="w-full flex justify-between items-start mb-6 border-b pb-4">
+                <div>
+                   <div className="text-teal-600 font-bold uppercase tracking-wider mb-1">{t.screeningQueue}</div>
+                   <div className="text-7xl font-black text-slate-800 flex items-center gap-4">
+                      {currentServing.id}
+                      {currentServing.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 text-sm px-3 py-1 rounded-full border border-orange-200">{t.appointmentTag}</span>}
+                   </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-slate-700 bg-slate-100 px-4 py-1.5 rounded-lg mb-2">{getUserTypeLabel(currentServing.userType, t)} {currentServing.studentId && `(${currentServing.studentId})`}</div>
+                  <div className="text-sm font-medium text-slate-500">{getTopicName(currentServing.topicId, currentServing.branch, lang)}</div>
+                </div>
+              </div>
+
+              {currentServing.details && (
+                <div className="w-full bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-8 text-left">
+                  <div className="flex items-center gap-2 font-bold text-yellow-800 mb-1"><FileText size={18}/> {t.detailsFromUser}</div>
+                  <p className="text-yellow-900">{currentServing.details}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-4">
+                <button onClick={() => onResolve(currentServing.id)} className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <CheckCircle size={24} /> {t.resolveHere}
+                </button>
+                <button onClick={() => setShowForwardModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <Share size={24} /> {t.forwardSpec}
+                </button>
+                <button onClick={() => { setFollowUpNote(''); setFollowUpDate(''); setShowFollowUpModal(true); }} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <Calendar size={24} /> {t.makeAppt}
+                </button>
+                <button onClick={() => onMissed(currentServing.id)} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <XCircle size={24} /> {t.noShow}
+                </button>
+              </div>
+
+              {/* Modals */}
+              {showFollowUpModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+                  <div className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl">
+                    <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2"><Calendar className="text-orange-500"/> {t.followUpTitle} ({currentServing.id})</h3>
+                    <div className="space-y-4 mb-6 text-left">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">{t.apptDetails}</label>
+                        <textarea value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} rows="3" className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none resize-none"></textarea>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">{t.apptDate}</label>
+                        <input type="datetime-local" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none" />
+                        <p className="text-xs text-orange-500 mt-2">{t.autoRequeueNote}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={() => { onFollowUp(currentServing.id, followUpNote, followUpDate); setShowFollowUpModal(false); }} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl">{t.saveAppt}</button>
+                      <button onClick={() => setShowFollowUpModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-xl">{t.cancel}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showForwardModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+                  <div className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl">
+                    <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2"><Share className="text-purple-600"/> {t.forwardSpec} ({currentServing.id})</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      {specialists.map(s => {
+                        const sLoad = queues.filter(q => q.assignedStaffId === s.id && q.status === 'waiting_staff').length;
+                        const isMatch = s.skills.includes(currentServing.topicId);
+                        
+                        // 🔥 ระบบบล็อกการส่งคิว หากสตาฟพักเบรกอยู่ จะกดส่งไม่ได้
+                        const isAvailable = s.isReady !== false;
+
+                        return (
+                          <button 
+                            key={s.id} 
+                            disabled={!isAvailable}
+                            onClick={() => { onForward(currentServing.id, s.id); setShowForwardModal(false); }}
+                            className={`p-4 rounded-xl border-2 text-left transition-all ${
+                              !isAvailable ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
+                              isMatch ? 'border-purple-200 bg-purple-50 hover:border-purple-500' : 'border-slate-100 hover:bg-slate-50 opacity-60'
+                            }`}
+                          >
+                            <div className="font-bold text-slate-800 text-lg flex items-center">
+                              {lang === 'th' ? s.name_th : s.name_en}
+                              {!isAvailable && <span className="text-red-500 text-sm ml-2 font-medium">({t.offline})</span>}
+                            </div>
+                            <div className="flex justify-between items-center mt-3">
+                              <span className="text-xs bg-white border px-2 py-1 rounded text-slate-500">{t.skills} {s.skills.join(',')}</span>
+                              <span className={`text-sm font-bold px-2 py-1 rounded ${sLoad === 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>WAIT {sLoad}</span>
+                            </div>
+                            {isMatch && isAvailable && <div className="text-xs text-purple-600 font-bold mt-2">{t.matchTopic}</div>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <button onClick={() => setShowForwardModal(false)} className="w-full py-4 text-slate-500 font-bold hover:bg-slate-100 rounded-xl">{t.cancel}</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl shadow-xl p-12 flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-teal-200">
+              <Users size={80} className="text-teal-100 mb-6" />
+              <button 
+                onClick={onCallNext} 
+                disabled={myWaitingQueues.length === 0 || !staffData?.isReady} 
+                className={`w-full max-w-md text-white font-black py-8 rounded-2xl text-3xl shadow-[0_10px_20px_rgba(13,148,136,0.3)] transition-transform active:scale-95 flex items-center justify-center gap-3 ${
+                  !staffData?.isReady ? 'bg-red-400 cursor-not-allowed shadow-none' : 'bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:shadow-none'
+                }`}
+              >
+                {!staffData?.isReady ? (
+                  <>{t.offline}</>
+                ) : (
+                  <><Play fill="currentColor" size={32}/> {t.callNext}</>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col">
+          <div className="bg-slate-50 p-5 border-b border-slate-200 font-black text-slate-700 flex justify-between items-center">
+            {t.waitingQueue} <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-lg text-sm">{myWaitingQueues.length}</span>
+          </div>
+          <div className="overflow-y-auto p-3 space-y-2">
+            {myWaitingQueues.map((q, idx) => (
+              <div key={q.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-black text-teal-300">#{idx + 1}</div>
+                  <div>
+                    <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                      {q.id}
+                      {q.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded border border-orange-200">{t.appointmentTag}</span>}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">{getTopicName(q.topicId, q.branch, lang)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollowUp, onMissed, onToggleReady, onLogout, lang, t }) {
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [followUpNote, setFollowUpNote] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const myWaitingQueues = queues.filter(q => q.assignedStaffId === staffId && q.status === 'waiting_staff').sort((a, b) => a.createdAt - b.createdAt);
+  const currentServing = queues.find(q => q.assignedStaffId === staffId && q.status === 'serving_staff');
+
+  return (
+    <div className="flex-grow flex flex-col bg-slate-50">
+      <div className="bg-blue-900 text-white p-4 sm:p-6 flex justify-between items-start sm:items-center shadow-md flex-col sm:flex-row gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-wide">{lang === 'th' ? staffData?.name_th : staffData?.name_en}</h2>
+          <div className="flex items-center gap-3 mt-2">
+            <button 
+              onClick={() => onToggleReady(staffId, staffData?.isReady)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                staffData?.isReady 
+                  ? 'bg-green-500/20 text-green-100 border-green-400 hover:bg-green-500/40' 
+                  : 'bg-red-500/20 text-red-200 border-red-400 hover:bg-red-500/40'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${staffData?.isReady ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              {staffData?.isReady ? t.online : t.offline}
+            </button>
+            <span className="text-blue-100 font-medium text-sm">{t.waitScreening} {myWaitingQueues.length} {t.queues}</span>
+          </div>
+        </div>
+        <button onClick={onLogout} className="text-blue-100 hover:text-white flex items-center gap-2 bg-blue-800 px-4 py-2 rounded-xl transition-colors w-full sm:w-auto justify-center">
+          <LogOut size={18} /> {t.logout}
+        </button>
+      </div>
+
+      <div className="flex-grow p-4 sm:p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {currentServing ? (
+            <div className="bg-white rounded-3xl shadow-xl border-t-8 border-blue-500 p-8 flex flex-col items-center">
+              <div className="w-full flex justify-between items-start mb-6 border-b pb-4">
+                <div>
+                   <div className="text-blue-600 font-bold uppercase tracking-wider mb-1">{t.forwardedQueue}</div>
+                   <div className="text-7xl font-black text-slate-800 flex items-center gap-4">
+                     {currentServing.id}
+                     {currentServing.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 text-sm px-3 py-1 rounded-full border border-orange-200">{t.appointmentTag}</span>}
+                   </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-slate-700 bg-slate-100 px-4 py-1.5 rounded-lg mb-2">{getUserTypeLabel(currentServing.userType, t)} {currentServing.studentId && `(${currentServing.studentId})`}</div>
+                </div>
+              </div>
+
+              {currentServing.details && (
+                <div className="w-full bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-8 text-left">
+                  <div className="flex items-center gap-2 font-bold text-yellow-800 mb-1"><FileText size={18}/> {t.detailsFromUser}</div>
+                  <p className="text-yellow-900">{currentServing.details}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-4">
+                <button onClick={() => onResolve(currentServing.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <CheckCircle size={24} /> {t.serviceCompleted}
+                </button>
+                <button onClick={() => { setFollowUpNote(''); setFollowUpDate(''); setShowFollowUpModal(true); }} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <Calendar size={24} /> {t.makeAppt}
+                </button>
+                <button onClick={() => onMissed(currentServing.id)} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <XCircle size={24} /> {t.noShow}
+                </button>
+              </div>
+
+              {/* Follow Up Modal */}
+              {showFollowUpModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+                  <div className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl">
+                    <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2"><Calendar className="text-orange-500"/> {t.followUpTitle} ({currentServing.id})</h3>
+                    <div className="space-y-4 mb-6 text-left">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">{t.apptDetails}</label>
+                        <textarea value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} rows="3" className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none resize-none"></textarea>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">{t.apptDate}</label>
+                        <input type="datetime-local" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none" />
+                        <p className="text-xs text-orange-500 mt-2">{t.autoRequeueNote}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={() => { onFollowUp(currentServing.id, followUpNote, followUpDate); setShowFollowUpModal(false); }} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl">{t.saveAppt}</button>
+                      <button onClick={() => setShowFollowUpModal(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-xl">{t.cancel}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl shadow-xl p-12 flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-blue-200">
+              <CheckCircle size={80} className="text-blue-100 mb-6" />
+              <button 
+                onClick={onCallNext} 
+                disabled={myWaitingQueues.length === 0 || !staffData?.isReady} 
+                className={`w-full max-w-md text-white font-black py-8 rounded-2xl text-3xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3 ${
+                  !staffData?.isReady ? 'bg-red-400 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:shadow-none'
+                }`}
+              >
+                {!staffData?.isReady ? (
+                  <>{t.offline}</>
+                ) : (
+                  <><Play fill="currentColor" size={32}/> {t.callNext}</>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden flex flex-col">
+          <div className="bg-slate-50 p-5 border-b border-slate-200 font-black text-slate-700 flex justify-between items-center">
+            {t.yourQueue} <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm">{myWaitingQueues.length}</span>
+          </div>
+          <div className="overflow-y-auto p-3 space-y-2">
+            {myWaitingQueues.map((q, idx) => (
+              <div key={q.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-black text-blue-300">#{idx + 1}</div>
+                  <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    {q.id}
+                    {q.isFollowUpReturn && <span className="bg-orange-100 text-orange-600 text-[10px] px-2 py-0.5 rounded border border-orange-200">{t.appointmentTag}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ queues, staff, onLogout, lang, t }) {
+  const completedQueues = queues.filter(q => q.status === 'completed');
+  const resolvedByFront = completedQueues.filter(q => q.resolvedBy === 'frontdesk').length;
+  const resolvedByStaff = completedQueues.filter(q => q.resolvedBy === 'staff').length;
+  const followUpQueues = queues.filter(q => q.status === 'follow_up').length;
+
+  // 🔥 ฟังก์ชัน Export ข้อมูลคิวเป็นไฟล์ CSV (เพิ่ม Feedback Comment)
+  const handleExportCSV = () => {
+    // 1. หัวตาราง
+    const headers = ['Queue ID', 'User Type', 'Student ID', 'Topic', 'Branch', 'Details', 'Status', 'Resolved By (Role)', 'Resolved By (Staff Name)', 'Created At', 'Called At', 'Follow Up Date', 'Feedback Score', 'Feedback Comment'];
+
+    // 2. แปลงข้อมูลคิวแต่ละรายการให้เป็นแถว
+    const csvRows = queues.map(q => {
+      const userType = getUserTypeLabel(q.userType, t);
+      const topicName = getTopicName(q.topicId, q.branch, lang);
+      
+      // หาชื่อพนักงานที่ให้บริการ
+      const staffName = q.assignedStaffId || q.frontDeskId 
+        ? (staff.find(s => s.id === (q.assignedStaffId || q.frontDeskId))?.name_th || '-') 
+        : '-';
+
+      // จัดการวันที่
+      const createdAt = q.createdAt ? new Date(q.createdAt).toLocaleString('en-US', { hour12: false }) : '-';
+      const calledAt = q.calledAt ? new Date(q.calledAt).toLocaleString('en-US', { hour12: false }) : '-';
+      const followUpDate = q.followUpDate ? new Date(q.followUpDate).toLocaleString('en-US', { hour12: false }) : '-';
+      
+      // ป้องกันเครื่องหมายคอมม่า (,) หรือ Enter ในข้อความ Details ทำให้ CSV พัง
+      const safeDetails = q.details ? `"${String(q.details).replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
+      const safeFeedbackComment = q.feedbackComment ? `"${String(q.feedbackComment).replace(/"/g, '""').replace(/\n/g, ' ')}"` : '-';
+
+      return [
+        q.id,
+        userType,
+        q.studentId || '-',
+        `"${topicName}"`, // ใส่ "" ป้องกันคอมม่าในชื่อ Topic
+        q.branch || '-',
+        safeDetails,
+        q.status || 'unknown',
+        q.resolvedBy || '-',
+        `"${staffName}"`,
+        createdAt,
+        calledAt,
+        followUpDate,
+        q.feedback || '-',
+        safeFeedbackComment
+      ].join(',');
+    });
+
+    // 3. รวมหัวตารางและแถวเข้าด้วยกัน (คั่นด้วย Enter)
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+
+    // 4. สร้าง Blob พร้อมใส่ BOM (\ufeff) เพื่อให้ Excel อ่านภาษาไทยได้ถูกต้อง 100%
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // 5. สร้างลิงก์ดาวน์โหลดและสั่งคลิกอัตโนมัติ
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ISE_Queues_Export_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link); // ล้างลิงก์ทิ้ง
+  };
+
+  return (
+    <div className="flex-grow bg-slate-50 p-4 sm:p-6 overflow-y-auto">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 gap-4">
+          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3"><BarChart className="text-purple-600"/> {t.dashboard}</h1>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* 🔥 ปุ่ม Export CSV */}
+            <button onClick={handleExportCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-white bg-green-600 px-4 py-2.5 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md active:scale-95">
+              <Download size={18} /> {t.exportBtn}
+            </button>
+            <button onClick={onLogout} className="flex-1 sm:flex-none text-slate-600 bg-slate-200 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-300 transition-colors active:scale-95 text-center">
+              {t.logout}
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-slate-500 font-bold mb-2">{t.totalSystem}</div>
+            <div className="text-5xl font-black text-slate-800">{queues.length}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-teal-600 font-bold mb-2">{t.resolvedFront}</div>
+            <div className="text-5xl font-black text-teal-600">{resolvedByFront}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-purple-600 font-bold mb-2">{t.resolvedSpec}</div>
+            <div className="text-5xl font-black text-purple-600">{resolvedByStaff}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-orange-500 font-bold mb-2">{t.pendingAppt}</div>
+            <div className="text-5xl font-black text-orange-500">{followUpQueues}</div>
+          </div>
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="text-amber-500 font-bold mb-2">{t.stuckSys}</div>
+            <div className="text-5xl font-black text-amber-500">{queues.filter(q=> q.status && ['waiting_front','serving_front','waiting_staff','serving_staff'].includes(q.status)).length}</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-slate-800 text-white p-4 font-bold text-lg">{t.liveDb}</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600 text-sm">
+                  <th className="p-4 border-b">Queue</th>
+                  <th className="p-4 border-b">Contact</th>
+                  <th className="p-4 border-b">Details/Notes</th>
+                  <th className="p-4 border-b">Topic</th>
+                  <th className="p-4 border-b">Resolved By</th>
+                  <th className="p-4 border-b">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queues.slice().reverse().map(q => (
+                  <tr key={q.id} className="border-b hover:bg-slate-50">
+                    <td className="p-4 font-black">
+                      {q.id}
+                      {q.isFollowUpReturn && <div className="text-orange-500 text-[10px] mt-1">{t.appointmentTag}</div>}
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-slate-700">{getUserTypeLabel(q.userType, t)}</div>
+                      {q.studentId && <div className="text-xs text-blue-600 font-bold">{q.studentId}</div>}
+                    </td>
+                    <td className="p-4 max-w-xs truncate text-slate-500 text-sm" title={q.details}>{q.details || '-'}</td>
+                    <td className="p-4 text-slate-600 font-medium">{getTopicName(q.topicId, q.branch, lang)}</td>
+                    <td className="p-4 text-sm font-bold">
+                       {q.resolvedBy === 'frontdesk' ? <span className="text-teal-600">Front Desk</span> : 
+                        q.resolvedBy === 'staff' ? <span className="text-purple-600">Specialist Staff</span> : '-'}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold
+                        ${q.status?.includes('waiting') ? 'bg-amber-100 text-amber-700' : ''}
+                        ${q.status?.includes('serving') ? 'bg-blue-100 text-blue-700' : ''}
+                        ${q.status === 'completed' ? 'bg-green-100 text-green-700' : ''}
+                        ${q.status === 'follow_up' ? 'bg-orange-100 text-orange-700' : ''}
+                        ${q.status === 'missed' ? 'bg-red-100 text-red-700' : ''}
+                      `}>
+                        {q.status ? String(q.status).toUpperCase().replace('_', ' ') : 'N/A'}
+                      </span>
+                      {q.status === 'follow_up' && (
+                        <div className="text-xs text-orange-600 mt-1 max-w-xs truncate" title={q.followUpNote}>
+                          {q.followUpDate ? new Date(q.followUpDate).toLocaleString(lang==='th'?'th-TH':'en-US',{dateStyle: 'short', timeStyle: 'short'}) : ''}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
