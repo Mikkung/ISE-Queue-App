@@ -590,7 +590,7 @@ function UnifiedLogin({ staff, onLoginFront, onLoginStaff, onLoginAdmin, t }) {
 
         <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400 text-center">
           <p>Mock Accounts for Test:</p>
-          <p>Admin: admin@ise.com / admin123</p>
+          <p>Admin: thanaphon.admin@ise.com / admin123</p>
           <p>Staff: s1@ise.com / 1234</p>
         </div>
       </div>
