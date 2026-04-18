@@ -10,16 +10,14 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 // 🔥 ใส่ตั้งค่า Firebase ของคุณที่นี่
-// 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || "YOUR_API_KEY",
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
+  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || "YOUR_APP_ID"
 };
-
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -105,6 +103,11 @@ const DICT = {
     pendingAppt: "รอดำเนินการ/นัดหมาย",
     stuckSys: "ค้างระบบ (รอ+ทำ)",
     liveDb: "ฐานข้อมูลคิวแบบละเอียด (Live Data)",
+    online: "พร้อมรับคิว",
+    offline: "พักเบรก",
+    loginTitle: "เข้าสู่ระบบบุคลากร",
+    emailLabel: "อีเมล (Email)",
+    passwordLabel: "รหัสผ่าน (Password)",
   },
   en: {
     kioskTitle: "Queue Management System",
@@ -156,7 +159,7 @@ const DICT = {
     waitingQueue: "WAITING LINE",
     totalQueues: "Total Queues",
     noWaitingQueue: "No waiting queues",
-    loginTo: "Login to",
+    loginTo: "Login",
     logout: "Logout",
     waitScreening: "Waiting:",
     queues: "Qs",
@@ -182,6 +185,11 @@ const DICT = {
     pendingAppt: "Pending/Appt",
     stuckSys: "Active in System",
     liveDb: "Live Detailed Database",
+    online: "Online",
+    offline: "Break",
+    loginTitle: "Staff Login",
+    emailLabel: "Email Address",
+    passwordLabel: "Password",
   }
 };
 
@@ -199,25 +207,26 @@ const BRANCHES = [
   { id: 'NANO', name: 'NANO' }, { id: 'RoboticsAI', name: 'RoboticsAI' }, { id: 'SEMI', name: 'SEMI' },
 ];
 
+// 🔥 เพิ่มระบบ Email และ Password พื้นฐานให้กับพนักงานแต่ละคน
 const INITIAL_STAFF = [
-  { id: 'fd1', name_th: 'Front Desk 1', name_en: 'Front Desk 1', role: 'frontdesk', skills: [], isReady: true },
-  { id: 'fd2', name_th: 'Front Desk 2', name_en: 'Front Desk 2', role: 'frontdesk', skills: [], isReady: false },
-  { id: 's1', name_th: 'Napassorn - Academic (NANO)', name_en: 'Napassorn - Academic (NANO)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's2', name_th: 'Nat - Academic (ICE)', name_en: 'Nat - Academic (ICE)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's3', name_th: 'Dolaporn - Academic (Robo)', name_en: 'Dolaporn - Academic (Robo)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's4', name_th: 'Nichayanuch - Academic (ADME)', name_en: 'Nichayanuch - Academic (ADME)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's5', name_th: 'Sittipun - Academic (AERO)', name_en: 'Sittipun - Academic (AERO)', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's6', name_th: 'Panyata - Academic', name_en: 'Panyata - Academic', role: 'specialist', skills: ['acad'], isReady: true },
-  { id: 's7', name_th: 'Suputtra - Academic', name_en: 'Suputtra - Academic', role: 'specialist', skills: ['acad','admin'], isReady: true },
-  { id: 's8', name_th: 'Punsita - Academic', name_en: 'Punsita - Academic', role: 'specialist', skills: ['admin','inter'], isReady: true },
-  { id: 's9', name_th: 'Fonthong - Inter', name_en: 'Fonthong - Inter', role: 'specialist', skills: ['admin','inter'], isReady: true },
-  { id: 's10', name_th: 'Jirachaya - Inter', name_en: 'Jirachaya - Inter', role: 'specialist', skills: ['admin','inter'], isReady: true },
-  { id: 's11', name_th: 'Supaphan - Fin/Procure', name_en: 'Supaphan - Fin/Procure', role: 'specialist', skills: ['fin'], isReady: true },
-  { id: 's12', name_th: 'Sawarach - Procure', name_en: 'Sawarach - Procure', role: 'specialist', skills: ['fin'], isReady: true },
-  { id: 's13', name_th: 'Jirasaya - Fin', name_en: 'Jirasaya - Fin', role: 'specialist', skills: ['fin'], isReady: true },
-  { id: 's14', name_th: 'Pamigar - Sa', name_en: 'Pamigar - Sa', role: 'specialist', skills: ['sa'], isReady: true },
-  { id: 's15', name_th: 'Waranya - Sa', name_en: 'Waranya - Sa', role: 'specialist', skills: ['sa'], isReady: true },
-  { id: 's18', name_th: 'Staff C (All-rounder)', name_en: 'Staff C (All-rounder)', role: 'specialist', skills: ['acad', 'fin', 'sa', 'inter', 'admin'], isReady: false },
+  { id: 'fd1', name_th: 'Front Desk 1', name_en: 'Front Desk 1', role: 'frontdesk', skills: [], isReady: true, email: 'fd1@ise.com', password: '1234' },
+  { id: 'fd2', name_th: 'Front Desk 2', name_en: 'Front Desk 2', role: 'frontdesk', skills: [], isReady: false, email: 'fd2@ise.com', password: '1234' },
+  { id: 's1', name_th: 'Napassorn - Academic (NANO)', name_en: 'Napassorn - Academic (NANO)', role: 'specialist', skills: ['acad'], isReady: true, email: 's1@ise.com', password: '1234' },
+  { id: 's2', name_th: 'Nat - Academic (ICE)', name_en: 'Nat - Academic (ICE)', role: 'specialist', skills: ['acad'], isReady: true, email: 's2@ise.com', password: '1234' },
+  { id: 's3', name_th: 'Dolaporn - Academic (Robo)', name_en: 'Dolaporn - Academic (Robo)', role: 'specialist', skills: ['acad'], isReady: true, email: 's3@ise.com', password: '1234' },
+  { id: 's4', name_th: 'Nichayanuch - Academic (ADME)', name_en: 'Nichayanuch - Academic (ADME)', role: 'specialist', skills: ['acad'], isReady: true, email: 's4@ise.com', password: '1234' },
+  { id: 's5', name_th: 'Sittipun - Academic (AERO)', name_en: 'Sittipun - Academic (AERO)', role: 'specialist', skills: ['acad'], isReady: true, email: 's5@ise.com', password: '1234' },
+  { id: 's6', name_th: 'Panyata - Academic', name_en: 'Panyata - Academic', role: 'specialist', skills: ['acad'], isReady: true, email: 's6@ise.com', password: '1234' },
+  { id: 's7', name_th: 'Suputtra - Academic', name_en: 'Suputtra - Academic', role: 'specialist', skills: ['acad','admin'], isReady: true, email: 's7@ise.com', password: '1234' },
+  { id: 's8', name_th: 'Punsita - Academic', name_en: 'Punsita - Academic', role: 'specialist', skills: ['admin','inter'], isReady: true, email: 's8@ise.com', password: '1234' },
+  { id: 's9', name_th: 'Fonthong - Inter', name_en: 'Fonthong - Inter', role: 'specialist', skills: ['admin','inter'], isReady: true, email: 's9@ise.com', password: '1234' },
+  { id: 's10', name_th: 'Jirachaya - Inter', name_en: 'Jirachaya - Inter', role: 'specialist', skills: ['admin','inter'], isReady: true, email: 's10@ise.com', password: '1234' },
+  { id: 's11', name_th: 'Supaphan - Fin/Procure', name_en: 'Supaphan - Fin/Procure', role: 'specialist', skills: ['fin'], isReady: true, email: 's11@ise.com', password: '1234' },
+  { id: 's12', name_th: 'Sawarach - Procure', name_en: 'Sawarach - Procure', role: 'specialist', skills: ['fin'], isReady: true, email: 's12@ise.com', password: '1234' },
+  { id: 's13', name_th: 'Jirasaya - Fin', name_en: 'Jirasaya - Fin', role: 'specialist', skills: ['fin'], isReady: true, email: 's13@ise.com', password: '1234' },
+  { id: 's14', name_th: 'Pamigar - Sa', name_en: 'Pamigar - Sa', role: 'specialist', skills: ['sa'], isReady: true, email: 's14@ise.com', password: '1234' },
+  { id: 's15', name_th: 'Waranya - Sa', name_en: 'Waranya - Sa', role: 'specialist', skills: ['sa'], isReady: true, email: 's15@ise.com', password: '1234' },
+  { id: 's18', name_th: 'Staff C (All-rounder)', name_en: 'Staff C (All-rounder)', role: 'specialist', skills: ['acad', 'fin', 'sa', 'inter', 'admin'], isReady: false, email: 's18@ise.com', password: '1234' },
 ];
 
 const TIMEOUT_MS = 3 * 60 * 1000;
@@ -263,7 +272,7 @@ const playNotifySound = () => {
 // MAIN APP STRUCTURE
 // ============================================================================
 
-const ProtectedRoute = ({ isAllowed, redirectPath = '/', children }) => {
+const ProtectedRoute = ({ isAllowed, redirectPath = '/login', children }) => {
   if (!isAllowed) return <Navigate to={redirectPath} replace />;
   return children;
 };
@@ -281,7 +290,6 @@ function MainLayout() {
   const [loggedInStaffId, setLoggedInStaffId] = useState(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
-  // 1. ฟังการเปลี่ยนแปลงของข้อมูล Queues
   useEffect(() => {
     try {
       const q = query(collection(db, 'queues'), orderBy('createdAt', 'asc'));
@@ -294,23 +302,27 @@ function MainLayout() {
       });
       return () => unsubscribe();
     } catch (err) {
-      console.error("Firebase connection error. Ensure your config is set properly.", err);
+      console.error("Firebase connection error:", err);
     }
   }, []);
 
-  // 2. ฟังการเปลี่ยนแปลงและดึงข้อมูล Staff จาก Firebase
   useEffect(() => {
     try {
       const staffQuery = query(collection(db, 'staffs'));
       const unsubscribeStaff = onSnapshot(staffQuery, (snapshot) => {
         if (snapshot.empty) {
-          console.log("Seeding initial staff data...");
           INITIAL_STAFF.forEach(async (s) => {
             await setDoc(doc(db, 'staffs', s.id), s);
           });
         } else {
           const staffData = [];
           snapshot.forEach((doc) => staffData.push({ id: doc.id, ...doc.data() }));
+          
+          staffData.sort((a, b) => {
+            if (a.isReady === b.isReady) return 0;
+            return a.isReady ? -1 : 1;
+          });
+
           setStaff(staffData);
         }
       });
@@ -318,34 +330,33 @@ function MainLayout() {
     } catch(err) {}
   }, []);
 
-  // 3. Background Worker: Auto-skip & Auto-Requeue
   useEffect(() => {
     if (!isAdminLoggedIn && !loggedInFrontId && !loggedInStaffId) return;
-
     const interval = setInterval(() => {
       const now = Date.now();
       queues.forEach(async (q) => {
-        if (q.status.includes('serving') && q.calledAt && (now - q.calledAt > TIMEOUT_MS)) {
-          await updateDoc(doc(db, 'queues', q.id), { status: 'missed', autoSkipped: true });
-        }
-        if (q.status === 'follow_up' && q.followUpDate) {
-          const appointmentTime = new Date(q.followUpDate).getTime();
-          if (now >= appointmentTime) {
-            await updateDoc(doc(db, 'queues', q.id), {
-              status: q.resolvedBy === 'staff' ? 'waiting_staff' : 'waiting_front',
-              assignedStaffId: q.resolvedBy === 'staff' ? q.followUpStaffId : null,
-              followUpDate: null, 
-              isFollowUpReturn: true, 
-              createdAt: now 
-            });
+        try {
+          if (q.status.includes('serving') && q.calledAt && (now - q.calledAt > TIMEOUT_MS)) {
+            await updateDoc(doc(db, 'queues', q.id), { status: 'missed', autoSkipped: true });
           }
-        }
+          if (q.status === 'follow_up' && q.followUpDate) {
+            const appointmentTime = new Date(q.followUpDate).getTime();
+            if (now >= appointmentTime) {
+              await updateDoc(doc(db, 'queues', q.id), {
+                status: q.resolvedBy === 'staff' ? 'waiting_staff' : 'waiting_front',
+                assignedStaffId: q.resolvedBy === 'staff' ? q.followUpStaffId : null,
+                followUpDate: null, 
+                isFollowUpReturn: true, 
+                createdAt: now 
+              });
+            }
+          }
+        } catch(e) {}
       });
     }, 5000); 
     return () => clearInterval(interval);
   }, [queues, isAdminLoggedIn, loggedInFrontId, loggedInStaffId]);
 
-  // --- ACTIONS ---
   const handleCreateTicket = async (ticketData) => {
     const { topicId, branch, userType, studentId, details } = ticketData;
     const ticketId = `Q${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
@@ -354,64 +365,77 @@ function MainLayout() {
       status: 'waiting_front', frontDeskId: null, assignedStaffId: null, resolvedBy: null, 
       createdAt: Date.now(), calledAt: null, feedback: null, isFollowUpReturn: false
     };
-    try {
-      await setDoc(doc(db, 'queues', ticketId), newTicket);
-      navigate(`/ticket/${ticketId}`);
-    } catch(err) {
-      console.error(err);
-    }
+    
+    await setDoc(doc(db, 'queues', ticketId), newTicket);
+    navigate(`/ticket/${ticketId}`);
   };
 
-  const handleFrontCallNext = async (frontId) => {
+  const safeFirebaseUpdate = async (updateFn) => {
+    try { await updateFn(); } 
+    catch (err) { console.error(err); alert("Firebase Error: ไม่สามารถอัปเดตข้อมูลได้"); }
+  }
+
+  const handleToggleReady = (staffId, currentStatus) => safeFirebaseUpdate(async () => {
+    await updateDoc(doc(db, 'staffs', staffId), { isReady: !currentStatus });
+  });
+
+  const handleFrontCallNext = (frontId) => safeFirebaseUpdate(async () => {
     const frontQueues = queues.filter(q => q.status === 'waiting_front').sort((a, b) => a.createdAt - b.createdAt);
     if (frontQueues.length > 0) {
       await updateDoc(doc(db, 'queues', frontQueues[0].id), {
         status: 'serving_front', frontDeskId: frontId, calledAt: Date.now()
       });
     }
-  };
+  });
 
-  const handleFrontResolve = async (ticketId) => {
+  const handleFrontResolve = (ticketId) => safeFirebaseUpdate(async () => {
     await updateDoc(doc(db, 'queues', ticketId), { status: 'completed', resolvedBy: 'frontdesk' });
-  };
+  });
 
-  const handleForwardToStaff = async (ticketId, staffId) => {
+  const handleForwardToStaff = (ticketId, staffId) => safeFirebaseUpdate(async () => {
     await updateDoc(doc(db, 'queues', ticketId), {
       status: 'waiting_staff', assignedStaffId: staffId, calledAt: null
     });
-  };
+  });
 
-  const handleStaffCallNext = async (staffId) => {
+  const handleStaffCallNext = (staffId) => safeFirebaseUpdate(async () => {
     const staffQueues = queues.filter(q => q.assignedStaffId === staffId && q.status === 'waiting_staff').sort((a, b) => a.createdAt - b.createdAt);
     if (staffQueues.length > 0) {
       await updateDoc(doc(db, 'queues', staffQueues[0].id), {
         status: 'serving_staff', calledAt: Date.now()
       });
     }
-  };
+  });
 
-  const handleStaffResolve = async (ticketId) => {
+  const handleStaffResolve = (ticketId) => safeFirebaseUpdate(async () => {
     await updateDoc(doc(db, 'queues', ticketId), { status: 'completed', resolvedBy: 'staff' });
-  };
+  });
 
-  const handleFollowUpTicket = async (ticketId, note, date, role, staffId) => {
+  const handleFollowUpTicket = (ticketId, note, date, role, staffId) => safeFirebaseUpdate(async () => {
     await updateDoc(doc(db, 'queues', ticketId), {
       status: 'follow_up', followUpNote: note, followUpDate: date, resolvedBy: role, followUpStaffId: staffId
     });
-  };
+  });
 
-  const handleMissedTicket = async (ticketId) => {
+  const handleMissedTicket = (ticketId) => safeFirebaseUpdate(async () => {
     await updateDoc(doc(db, 'queues', ticketId), { status: 'missed' });
-  };
+  });
 
-  const handleFeedback = async (ticketId, rating) => {
+  const handleFeedback = (ticketId, rating) => safeFirebaseUpdate(async () => {
     await updateDoc(doc(db, 'queues', ticketId), { feedback: rating });
     setTimeout(() => { navigate('/'); }, 1500);
+  });
+
+  // ระบบ Logout
+  const handleLogout = () => {
+    setLoggedInFrontId(null);
+    setLoggedInStaffId(null);
+    setIsAdminLoggedIn(false);
+    navigate('/login');
   };
 
   return (
     <>
-      {/* 🌐 ปุ่มเปลี่ยนภาษา */}
       <div className="fixed bottom-6 right-6 z-50">
         <button 
           onClick={() => setLang(lang === 'th' ? 'en' : 'th')} 
@@ -428,24 +452,37 @@ function MainLayout() {
           <Route path="/ticket/:ticketId" element={<TicketViewWrapper queues={queues} onFeedback={handleFeedback} staff={staff} lang={lang} t={t} />} />
           <Route path="/monitor" element={<MonitorScreen queues={queues} staff={staff} lang={lang} t={t} />} />
           
-          <Route path="/frontdesk/login" element={<RoleLogin role="frontdesk" staff={staff} onLogin={(id) => { setLoggedInFrontId(id); navigate('/frontdesk'); }} title={`Front Desk ${t.loginTo}`} lang={lang} t={t} />} />
+          {/* 🔥 เปลี่ยนหน้า Login ให้เหลือหน้าเดียว (Unified Login) */}
+          <Route path="/login" element={
+            <UnifiedLogin 
+              staff={staff} 
+              onLoginFront={(id) => { setLoggedInFrontId(id); navigate('/frontdesk'); }}
+              onLoginStaff={(id) => { setLoggedInStaffId(id); navigate('/staff'); }}
+              onLoginAdmin={() => { setIsAdminLoggedIn(true); navigate('/admin'); }}
+              t={t} 
+            />
+          } />
+
+          {/* ป้องกันคนพิมพ์ URL เก่า ให้โยนกลับมาหน้า Login ใหม่ */}
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/frontdesk/login" element={<Navigate to="/login" replace />} />
+          <Route path="/staff/login" element={<Navigate to="/login" replace />} />
+
           <Route path="/frontdesk" element={
-            <ProtectedRoute isAllowed={!!loggedInFrontId} redirectPath="/frontdesk/login">
-              <FrontDeskPanel staffId={loggedInFrontId} staffData={staff.find(s => s.id === loggedInFrontId)} allStaff={staff} queues={queues} onCallNext={() => handleFrontCallNext(loggedInFrontId)} onResolve={handleFrontResolve} onForward={handleForwardToStaff} onFollowUp={(ticketId, note, date) => handleFollowUpTicket(ticketId, note, date, 'frontdesk', loggedInFrontId)} onMissed={handleMissedTicket} onLogout={() => { setLoggedInFrontId(null); navigate('/frontdesk/login'); }} lang={lang} t={t} /> 
+            <ProtectedRoute isAllowed={!!loggedInFrontId} redirectPath="/login">
+              <FrontDeskPanel staffId={loggedInFrontId} staffData={staff.find(s => s.id === loggedInFrontId)} allStaff={staff} queues={queues} onCallNext={() => handleFrontCallNext(loggedInFrontId)} onResolve={handleFrontResolve} onForward={handleForwardToStaff} onFollowUp={(ticketId, note, date) => handleFollowUpTicket(ticketId, note, date, 'frontdesk', loggedInFrontId)} onMissed={handleMissedTicket} onToggleReady={handleToggleReady} onLogout={handleLogout} lang={lang} t={t} /> 
             </ProtectedRoute>
           } />
 
-          <Route path="/staff/login" element={<RoleLogin role="specialist" staff={staff} onLogin={(id) => { setLoggedInStaffId(id); navigate('/staff'); }} title={`Specialist ${t.loginTo}`} lang={lang} t={t} />} />
           <Route path="/staff" element={
-            <ProtectedRoute isAllowed={!!loggedInStaffId} redirectPath="/staff/login">
-              <StaffPanel staffId={loggedInStaffId} staffData={staff.find(s => s.id === loggedInStaffId)} queues={queues} onCallNext={() => handleStaffCallNext(loggedInStaffId)} onResolve={handleStaffResolve} onFollowUp={(ticketId, note, date) => handleFollowUpTicket(ticketId, note, date, 'staff', loggedInStaffId)} onMissed={handleMissedTicket} onLogout={() => { setLoggedInStaffId(null); navigate('/staff/login'); }} lang={lang} t={t} />
+            <ProtectedRoute isAllowed={!!loggedInStaffId} redirectPath="/login">
+              <StaffPanel staffId={loggedInStaffId} staffData={staff.find(s => s.id === loggedInStaffId)} queues={queues} onCallNext={() => handleStaffCallNext(loggedInStaffId)} onResolve={handleStaffResolve} onFollowUp={(ticketId, note, date) => handleFollowUpTicket(ticketId, note, date, 'staff', loggedInStaffId)} onMissed={handleMissedTicket} onToggleReady={handleToggleReady} onLogout={handleLogout} lang={lang} t={t} />
             </ProtectedRoute>
           } />
 
-          <Route path="/admin/login" element={<AdminLogin onLogin={() => { setIsAdminLoggedIn(true); navigate('/admin'); }} t={t} />} />
           <Route path="/admin" element={
-            <ProtectedRoute isAllowed={isAdminLoggedIn} redirectPath="/admin/login">
-              <AdminPanel queues={queues} staff={staff} onLogout={() => { setIsAdminLoggedIn(false); navigate('/admin/login'); }} lang={lang} t={t} />
+            <ProtectedRoute isAllowed={isAdminLoggedIn} redirectPath="/login">
+              <AdminPanel queues={queues} staff={staff} onLogout={handleLogout} lang={lang} t={t} />
             </ProtectedRoute>
           } />
         </Routes>
@@ -472,6 +509,90 @@ function TicketViewWrapper({ queues, onFeedback, staff, lang, t }) {
 // COMPONENTS ย่อย
 // ============================================================================
 
+// 🔥 ฟังก์ชันหน้าจอ Unified Login แบบกรอก Email + Password
+function UnifiedLogin({ staff, onLoginFront, onLoginStaff, onLoginAdmin, t }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setError('');
+
+    // กรณีเข้าสู่ระบบด้วย Admin (รหัสแบบ Hardcode สำหรับ Prototype)
+    if (email === 'admin@ise.com' && password === 'admin123') {
+      onLoginAdmin();
+      return;
+    }
+
+    // กรณีเข้าสู่ระบบพนักงาน ค้นหาใน Firestore
+    const matchedStaff = staff.find(s => s.email === email && s.password === password);
+    if (matchedStaff) {
+      if (matchedStaff.role === 'frontdesk') {
+        onLoginFront(matchedStaff.id);
+      } else {
+        onLoginStaff(matchedStaff.id);
+      }
+    } else {
+      setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง (Invalid email or password)');
+    }
+  };
+
+  return (
+    <div className="flex-grow flex flex-col items-center justify-center p-6 bg-slate-100">
+      <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-xl w-full max-w-md border border-slate-100">
+        <div className="flex justify-center mb-6">
+          <div className="bg-blue-100 p-4 rounded-full text-blue-600">
+            <Lock size={40} />
+          </div>
+        </div>
+        <h2 className="text-3xl font-black text-slate-800 mb-8 text-center">{t.loginTitle}</h2>
+        
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">{t.emailLabel}</label>
+            <input 
+              type="email" 
+              required 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" 
+              placeholder="e.g., s1@ise.com" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">{t.passwordLabel}</label>
+            <input 
+              type="password" 
+              required 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" 
+              placeholder="••••••••" 
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium text-center border border-red-100">
+              {error}
+            </div>
+          )}
+
+          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95 mt-4">
+            {t.loginTo}
+          </button>
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400 text-center">
+          <p>Mock Accounts for Test:</p>
+          <p>Admin: admin@ise.com / admin123</p>
+          <p>Staff: s1@ise.com / 1234</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function KioskHome({ onEnter, t }) {
   return (
     <div className="flex-grow flex flex-col items-center justify-center p-6 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-white to-white">
@@ -495,15 +616,33 @@ function StudentForm({ onSubmit, onBack, lang, t }) {
   const [topic, setTopic] = useState('');
   const [branch, setBranch] = useState('');
   const [details, setDetails] = useState('');
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const isStudent = userType === 'student';
   const showStudentId = ['student', 'parent'].includes(userType);
   
   const isFormValid = topic && (!isStudent || studentId.trim() !== '');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isFormValid) onSubmit({ topicId: topic, branch: branch || null, userType, studentId: showStudentId ? studentId.trim() : null, details: details.trim() });
+    if (isFormValid) {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      try {
+        await onSubmit({ 
+          topicId: topic, 
+          branch: branch || null, 
+          userType, 
+          studentId: showStudentId ? studentId.trim() : null, 
+          details: details.trim() 
+        });
+      } catch (err) {
+        setSubmitError("เชื่อมต่อระบบล้มเหลว โปรดตรวจสอบการตั้งค่า Firebase API Key");
+        setIsSubmitting(false);
+      }
+    }
   };
 
   return (
@@ -568,8 +707,19 @@ function StudentForm({ onSubmit, onBack, lang, t }) {
             <textarea value={details} onChange={(e) => setDetails(e.target.value)} rows="3" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none resize-none transition-all" placeholder={t.placeholderDetails} />
           </div>
 
-          <button type="submit" disabled={!isFormValid} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-5 rounded-xl text-xl shadow-lg transition-all mt-6">
-            {t.confirmBtn}
+          {submitError && (
+            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm mt-4 border border-red-200 flex items-start gap-2">
+              <AlertTriangle size={20} className="shrink-0" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
+          <button type="submit" disabled={!isFormValid || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-5 rounded-xl text-xl shadow-lg transition-all mt-6 flex items-center justify-center gap-2">
+            {isSubmitting ? (
+              <><div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div> กำลังประมวลผล...</>
+            ) : (
+              t.confirmBtn
+            )}
           </button>
         </form>
       </div>
@@ -797,28 +947,7 @@ function MonitorScreen({ queues, staff, lang, t }) {
   );
 }
 
-function RoleLogin({ role, staff, onLogin, title, lang, t }) {
-  const eligibleStaff = staff.filter(s => s.role === role);
-  return (
-    <div className="flex-grow flex flex-col items-center justify-center p-6 bg-slate-100">
-      <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100">
-        <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3">
-          <Users className={role === 'frontdesk' ? 'text-teal-600' : 'text-blue-600'}/> {title}
-        </h2>
-        <div className="space-y-3">
-          {eligibleStaff.map(s => (
-            <button key={s.id} onClick={() => onLogin(s.id)} className={`w-full text-left p-5 border-2 rounded-2xl transition-all hover:-translate-y-1 ${role === 'frontdesk' ? 'border-teal-100 hover:border-teal-400 hover:bg-teal-50' : 'border-blue-100 hover:border-blue-400 hover:bg-blue-50'}`}>
-              <div className="font-bold text-slate-800 text-lg">{lang === 'th' ? s.name_th : s.name_en}</div>
-              {s.skills && s.skills.length > 0 && <div className="text-xs text-slate-500 mt-2 bg-white px-2 py-1 inline-block rounded border">{t.skills} {s.skills.join(', ')}</div>}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onResolve, onForward, onFollowUp, onMissed, onLogout, lang, t }) {
+function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onResolve, onForward, onFollowUp, onMissed, onToggleReady, onLogout, lang, t }) {
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [followUpNote, setFollowUpNote] = useState('');
@@ -829,15 +958,25 @@ function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onRe
 
   return (
     <div className="flex-grow flex flex-col bg-slate-50">
-      <div className="bg-teal-900 text-white p-4 sm:p-6 flex justify-between items-center shadow-md">
+      <div className="bg-teal-900 text-white p-4 sm:p-6 flex justify-between items-start sm:items-center shadow-md flex-col sm:flex-row gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-black tracking-wide">{lang === 'th' ? staffData?.name_th : staffData?.name_en}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
-            <span className="text-teal-100 font-medium">{t.waitScreening} {myWaitingQueues.length} {t.queues}</span>
+          <div className="flex items-center gap-3 mt-2">
+            <button 
+              onClick={() => onToggleReady(staffId, staffData?.isReady)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                staffData?.isReady 
+                  ? 'bg-green-500/20 text-green-100 border-green-400 hover:bg-green-500/40' 
+                  : 'bg-red-500/20 text-red-200 border-red-400 hover:bg-red-500/40'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${staffData?.isReady ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              {staffData?.isReady ? t.online : t.offline}
+            </button>
+            <span className="text-teal-100 font-medium text-sm">{t.waitScreening} {myWaitingQueues.length} {t.queues}</span>
           </div>
         </div>
-        <button onClick={onLogout} className="text-teal-100 hover:text-white flex items-center gap-2 bg-teal-800 px-4 py-2 rounded-xl transition-colors">
+        <button onClick={onLogout} className="text-teal-100 hover:text-white flex items-center gap-2 bg-teal-800 px-4 py-2 rounded-xl transition-colors w-full sm:w-auto justify-center">
           <LogOut size={18} /> {t.logout}
         </button>
       </div>
@@ -914,15 +1053,29 @@ function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onRe
                       {specialists.map(s => {
                         const sLoad = queues.filter(q => q.assignedStaffId === s.id && q.status === 'waiting_staff').length;
                         const isMatch = s.skills.includes(currentServing.topicId);
+                        
+                        // 🔥 ระบบบล็อกการส่งคิว หากสตาฟพักเบรกอยู่ จะกดส่งไม่ได้
+                        const isAvailable = s.isReady !== false;
+
                         return (
-                          <button key={s.id} onClick={() => { onForward(currentServing.id, s.id); setShowForwardModal(false); }}
-                            className={`p-4 rounded-xl border-2 text-left transition-all ${isMatch ? 'border-purple-200 bg-purple-50 hover:border-purple-500' : 'border-slate-100 hover:bg-slate-50 opacity-60'}`}>
-                            <div className="font-bold text-slate-800 text-lg">{lang === 'th' ? s.name_th : s.name_en}</div>
+                          <button 
+                            key={s.id} 
+                            disabled={!isAvailable}
+                            onClick={() => { onForward(currentServing.id, s.id); setShowForwardModal(false); }}
+                            className={`p-4 rounded-xl border-2 text-left transition-all ${
+                              !isAvailable ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed' :
+                              isMatch ? 'border-purple-200 bg-purple-50 hover:border-purple-500' : 'border-slate-100 hover:bg-slate-50 opacity-60'
+                            }`}
+                          >
+                            <div className="font-bold text-slate-800 text-lg flex items-center">
+                              {lang === 'th' ? s.name_th : s.name_en}
+                              {!isAvailable && <span className="text-red-500 text-sm ml-2 font-medium">({t.offline})</span>}
+                            </div>
                             <div className="flex justify-between items-center mt-3">
                               <span className="text-xs bg-white border px-2 py-1 rounded text-slate-500">{t.skills} {s.skills.join(',')}</span>
                               <span className={`text-sm font-bold px-2 py-1 rounded ${sLoad === 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>WAIT {sLoad}</span>
                             </div>
-                            {isMatch && <div className="text-xs text-purple-600 font-bold mt-2">{t.matchTopic}</div>}
+                            {isMatch && isAvailable && <div className="text-xs text-purple-600 font-bold mt-2">{t.matchTopic}</div>}
                           </button>
                         )
                       })}
@@ -935,8 +1088,18 @@ function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onRe
           ) : (
             <div className="bg-white rounded-3xl shadow-xl p-12 flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-teal-200">
               <Users size={80} className="text-teal-100 mb-6" />
-              <button onClick={onCallNext} disabled={myWaitingQueues.length === 0} className="w-full max-w-md bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-black py-8 rounded-2xl text-3xl shadow-[0_10px_20px_rgba(13,148,136,0.3)] transition-transform active:scale-95 flex items-center justify-center gap-3">
-                <Play fill="currentColor" size={32}/> {t.callNext}
+              <button 
+                onClick={onCallNext} 
+                disabled={myWaitingQueues.length === 0 || !staffData?.isReady} 
+                className={`w-full max-w-md text-white font-black py-8 rounded-2xl text-3xl shadow-[0_10px_20px_rgba(13,148,136,0.3)] transition-transform active:scale-95 flex items-center justify-center gap-3 ${
+                  !staffData?.isReady ? 'bg-red-400 cursor-not-allowed shadow-none' : 'bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:shadow-none'
+                }`}
+              >
+                {!staffData?.isReady ? (
+                  <>{t.offline}</>
+                ) : (
+                  <><Play fill="currentColor" size={32}/> {t.callNext}</>
+                )}
               </button>
             </div>
           )}
@@ -968,7 +1131,7 @@ function FrontDeskPanel({ staffId, staffData, allStaff, queues, onCallNext, onRe
   );
 }
 
-function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollowUp, onMissed, onLogout, lang, t }) {
+function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollowUp, onMissed, onToggleReady, onLogout, lang, t }) {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [followUpNote, setFollowUpNote] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
@@ -977,15 +1140,25 @@ function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollo
 
   return (
     <div className="flex-grow flex flex-col bg-slate-50">
-      <div className="bg-blue-900 text-white p-4 sm:p-6 flex justify-between items-center shadow-md">
+      <div className="bg-blue-900 text-white p-4 sm:p-6 flex justify-between items-start sm:items-center shadow-md flex-col sm:flex-row gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-black tracking-wide">{lang === 'th' ? staffData?.name_th : staffData?.name_en}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
-            <span className="text-blue-100 font-medium">{t.waitScreening} {myWaitingQueues.length} {t.queues}</span>
+          <div className="flex items-center gap-3 mt-2">
+            <button 
+              onClick={() => onToggleReady(staffId, staffData?.isReady)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                staffData?.isReady 
+                  ? 'bg-green-500/20 text-green-100 border-green-400 hover:bg-green-500/40' 
+                  : 'bg-red-500/20 text-red-200 border-red-400 hover:bg-red-500/40'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${staffData?.isReady ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              {staffData?.isReady ? t.online : t.offline}
+            </button>
+            <span className="text-blue-100 font-medium text-sm">{t.waitScreening} {myWaitingQueues.length} {t.queues}</span>
           </div>
         </div>
-        <button onClick={onLogout} className="text-blue-100 hover:text-white flex items-center gap-2 bg-blue-800 px-4 py-2 rounded-xl transition-colors">
+        <button onClick={onLogout} className="text-blue-100 hover:text-white flex items-center gap-2 bg-blue-800 px-4 py-2 rounded-xl transition-colors w-full sm:w-auto justify-center">
           <LogOut size={18} /> {t.logout}
         </button>
       </div>
@@ -1053,8 +1226,18 @@ function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollo
           ) : (
             <div className="bg-white rounded-3xl shadow-xl p-12 flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-blue-200">
               <CheckCircle size={80} className="text-blue-100 mb-6" />
-              <button onClick={onCallNext} disabled={myWaitingQueues.length === 0} className="w-full max-w-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-black py-8 rounded-2xl text-3xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3">
-                <Play fill="currentColor" size={32}/> {t.callNext}
+              <button 
+                onClick={onCallNext} 
+                disabled={myWaitingQueues.length === 0 || !staffData?.isReady} 
+                className={`w-full max-w-md text-white font-black py-8 rounded-2xl text-3xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-3 ${
+                  !staffData?.isReady ? 'bg-red-400 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:shadow-none'
+                }`}
+              >
+                {!staffData?.isReady ? (
+                  <>{t.offline}</>
+                ) : (
+                  <><Play fill="currentColor" size={32}/> {t.callNext}</>
+                )}
               </button>
             </div>
           )}
@@ -1078,18 +1261,6 @@ function StaffPanel({ staffId, staffData, queues, onCallNext, onResolve, onFollo
             ))}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function AdminLogin({ onLogin, t }) {
-  return (
-    <div className="flex-grow flex flex-col items-center justify-center p-6 bg-slate-100">
-      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm text-center">
-        <Lock size={48} className="mx-auto text-purple-600 mb-4" />
-        <h2 className="text-2xl font-black text-slate-800 mb-6">Admin Panel</h2>
-        <button onClick={onLogin} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition-all">{t.loginTo}</button>
       </div>
     </div>
   );
