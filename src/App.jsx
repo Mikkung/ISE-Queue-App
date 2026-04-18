@@ -807,4 +807,4 @@ function StudentView({ ticketId, queues, onFeedback, onNewTicket, staff, lang, t
                   {score}
                 </button>
               ))}
-            </div></div></div></div>)}
+            </div></div></div></div>);}
